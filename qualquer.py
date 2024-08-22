@@ -12,4 +12,4 @@ def gerarLista():
     arquivo.close()
 
 
-gerarLista()
+gerarLista(!"input")
