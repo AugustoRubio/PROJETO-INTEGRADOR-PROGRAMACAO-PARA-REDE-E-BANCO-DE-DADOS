@@ -22,6 +22,7 @@ if not os.path.exists(nmap_path):
 # Configura o caminho do nmap para o nmap.PortScanner
 nmap.PortScanner().nmap_executable = nmap_path
 
+#Verifica se o arquivo do BANCO DE DADOS existe, se não existir cria o arquivo com os parametros padrão.
 def verifica_arquivo(arquivo):
     if not os.path.exists(arquivo):
         cria_banco(arquivo)
@@ -44,6 +45,7 @@ def cria_banco(arquivo):
         ''')
         conn.commit()
 
+#Verifica se o BANCO DE DADOS possui a estrutura inicial correta, se não tiver cria a estrutura.
 def verifica_base_inicial(arquivo):
     with sqlite3.connect(arquivo) as conn:
         cursor = conn.cursor()
@@ -51,12 +53,14 @@ def verifica_base_inicial(arquivo):
         if not cursor.fetchone():
             cria_banco(arquivo)
 
+#Usa o nmap para escanear a rede e retorna uma lista com os resultados
 def escanear_rede(rede):
     nm = nmap.PortScanner()
     nm.scan(hosts=rede, arguments='-p 22,80', timeout=30)
     resultados = []
     hosts = nm.all_hosts()
-    
+
+    #Procura as informações de cada host e adiciona na lista de resultados    
     for host in tqdm(hosts, desc="Escaneando hosts", unit="host"):
         hostname = nm[host].hostname()
         mac_address = nm[host]['addresses'].get('mac', 'N/A')
@@ -65,9 +69,9 @@ def escanear_rede(rede):
         porta_80 = 'open' if 80 in nm[host]['tcp'] and nm[host]['tcp'][80]['state'] == 'open' else 'closed'
         resultados.append((hostname, mac_address, ip, porta_22, porta_80))
         time.sleep(0.1)  # Simulate some delay for progress bar visibility
-
     return resultados
 
+#Salva os resultados no BANCO DE DADOS
 def salvar_resultados(arquivo, resultados):
     data = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     with sqlite3.connect(arquivo) as conn:
@@ -79,6 +83,7 @@ def salvar_resultados(arquivo, resultados):
             ''', (data, *resultado))
         conn.commit()
 
+#Permite visualizar as informações do BANCO DE DADOS de acordo com a data
 def visualizar_informacoes(arquivo, data):
     with sqlite3.connect(arquivo) as conn:
         cursor = conn.cursor()
@@ -97,6 +102,8 @@ def visualizar_informacoes(arquivo, data):
             print("-" * 80)
         else:
             print("Nenhum resultado encontrado para a data fornecida.")
+
+#Função para obter dentro do menu a rede local atual do computador
 def obter_rede_local():
     hostname = socket.gethostname()
     ip_local = socket.gethostbyname(hostname)
@@ -117,9 +124,11 @@ def obter_rede_local():
     rede_local = f"{ip_local}/{cidr}"
     return rede_local
 
+#Função para converter a máscara de rede para CIDR
 def netmask_to_cidr(netmask):
     return sum(bin(int(x)).count('1') for x in netmask.split('.'))
 
+#Menu principal
 def menu():
     verifica_arquivo(arquivo)
     rede_sugerida = obter_rede_local()
