@@ -6,6 +6,8 @@ from datetime import datetime
 import time
 from tqdm import tqdm
 import socket
+import ipaddress
+import psutil
 
 # Define a pasta da criação do arquivo a mesma do arquivo .py
 pasta = os.path.dirname(__file__)
@@ -95,14 +97,28 @@ def visualizar_informacoes(arquivo, data):
             print("-" * 80)
         else:
             print("Nenhum resultado encontrado para a data fornecida.")
-
 def obter_rede_local():
     hostname = socket.gethostname()
     ip_local = socket.gethostbyname(hostname)
-    ip_parts = ip_local.split('.')
-    ip_parts[-1] = '0/24'
-    rede_local = '.'.join(ip_parts)
+    netmask = None
+
+    for interface, addrs in psutil.net_if_addrs().items():
+        for addr in addrs:
+            if addr.family == socket.AF_INET and addr.address == ip_local:
+                netmask = addr.netmask
+                break
+        if netmask:
+            break
+
+    if not netmask:
+        raise ValueError("Could not determine the netmask for the local IP address.")
+
+    cidr = netmask_to_cidr(netmask)
+    rede_local = f"{ip_local}/{cidr}"
     return rede_local
+
+def netmask_to_cidr(netmask):
+    return sum(bin(int(x)).count('1') for x in netmask.split('.'))
 
 def menu():
     verifica_arquivo(arquivo)
@@ -116,16 +132,13 @@ def menu():
             if opcao == '1':
                 os.system('cls' if os.name == 'nt' else 'clear')
                 print(f"1- Usar a rede atual ({rede_sugerida})")
-                print("2- Digitar outra rede (/24)")
+                print("2- Digitar outra rede")
                 print("9- Voltar ao menu principal")
                 sub_opcao = input("Escolha uma opção: ")
                 if sub_opcao == '1':
                     rede = rede_sugerida
                 elif sub_opcao == '2':
                     rede = input(f"Digite a rede que deseja escanear (ex: {rede_sugerida}): ")
-                    if not rede.endswith('/24'):
-                        print("Somente redes /24 são permitidas. Retornando ao menu principal.")
-                        continue
                 elif sub_opcao == '9':
                     os.system('cls' if os.name == 'nt' else 'clear')
                     continue
