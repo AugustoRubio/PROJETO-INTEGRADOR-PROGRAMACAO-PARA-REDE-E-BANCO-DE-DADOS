@@ -4,6 +4,7 @@ import hashlib
 from tkinter import messagebox
 import nmap
 import TESTE_REDE
+import os
 
 # Conexão com o banco de dados SQLite
 try:
@@ -49,7 +50,18 @@ def open_menu():
 
     def sair():
         menu_window.destroy()
+        import importlib.util
 
+        def load_teste_rede():
+            module_name = "TESTE_REDE"
+            file_path = os.path.join(os.path.dirname(__file__), "TESTE_REDE.py")
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+
+        TESTE_REDE = load_teste_rede()
+        
     btn_escanear = tk.Button(menu_window, text="Escanear Rede", command=escanear_rede)
     btn_escanear.pack()
 
