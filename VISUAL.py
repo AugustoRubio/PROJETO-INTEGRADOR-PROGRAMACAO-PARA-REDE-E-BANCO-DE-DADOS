@@ -7,8 +7,8 @@
 # Paulo Sérgio Aparecido Monteiro Feliciano
 
 #PARA COMEÇAR!:
-#1 - Instale as bibliotecas necessárias para o funcionamento do programa: Nmap (pip install python-nmap), tqdm (pip install tqdm), psutil(pip install psutil)
-#2 - Instale o Nmap no caminho padrão (C:\Program Files (x86)\Nmap\nmap.exe)
+#1 - Instale as bibliotecas necessárias para o funcionamento do programa: Nmap (pip install python-nmap), tqdm (pip install tqdm), psutil(pip install psutil), pillow(pip install pillow), tkinter (pip install tk), sqlite3 (pip install db-sqlite3).
+#2 - Instale o Nmap no caminho padrão (C:\Program Files (x86)\Nmap\nmap.exe).
 #3 - Execute o arquivo criar_db.py para criar o banco de dados de login e usuário. Usuário padrão: admin, senha padrão: teste.
 #4 - Execute o arquivo visual.py para iniciar o programa.
 
@@ -35,8 +35,8 @@ import socket
 import ipaddress
 import psutil
 #Biblioteca para manipulação de imagens
-import base64
-from io import BytesIO
+import PIL
+from PIL import Image, ImageTk
 
 ########################################################## FAZ AS VERIFICACOES INICIAIS DO BANCO DE DADOS DO ANALISADOR DE REDE ###########################
 # Define a pasta da criação do arquivo a mesma do arquivo .py
@@ -172,29 +172,34 @@ janela_login.geometry("800x800")
 ########################################################## IMPLEMENTA LOGO NO TOPO DO PROGRAMA ##########################################################################
 # Função para carregar a imagem GIF
 def carregar_gif(caminho):
-    with open(caminho, "rb") as image_file:
-        encoded_string = base64.b64encode(image_file.read())
-    return tk.PhotoImage(data=encoded_string)
+    return Image.open(caminho)
 
 # Caminho da imagem GIF
-caminho_logo = "apoio\\LOGO_R3.png"
+caminho_logo = "apoio\\teste.gif"
 
 # Carregar a imagem GIF
 imagem_logo = carregar_gif(caminho_logo)
 
 # Adicionar a imagem na janela de login
-label_logo = tk.Label(janela_login, image=imagem_logo)
+label_logo = tk.Label(janela_login, image=ImageTk.PhotoImage(imagem_logo))
 label_logo.pack(pady=20)
+
+# Função para redimensionar a imagem
+def redimensionar_imagem(imagem, largura, altura):
+    return imagem.resize((largura, altura), Image.LANCZOS)
 
 # Função para animar o GIF
 def animar_gif(ind):
     try:
-        frame = tk.PhotoImage(file=caminho_logo, format=f"gif -index {ind}")
-        label_logo.configure(image=frame)
-        label_logo.image = frame
+        frame = Image.open(caminho_logo)
+        frame.seek(ind)
+        frame = redimensionar_imagem(frame, 200, 100)
+        frame_image = ImageTk.PhotoImage(frame)
+        label_logo.configure(image=frame_image)
+        label_logo.image = frame_image
         ind += 1
         janela_login.after(100, animar_gif, ind)
-    except tk.TclError:
+    except EOFError:
         ind = 0
         janela_login.after(100, animar_gif, ind)
 
@@ -226,36 +231,30 @@ caminho_logo_rodape = "apoio\\teste1.gif"
 imagem_logo_rodape = carregar_gif(caminho_logo_rodape)
 
 # Adicionar a imagem na janela de login (rodapé)
-label_logo_rodape = tk.Label(janela_login, image=imagem_logo_rodape)
+label_logo_rodape = tk.Label(janela_login, image=ImageTk.PhotoImage(imagem_logo_rodape))
 label_logo_rodape.pack(side="bottom", pady=10)
-
-# Variável para controlar a velocidade da animação do GIF
-velocidade_animacao = 250  # Valor em milissegundos
 
 # Função para redimensionar a imagem
 def redimensionar_imagem(imagem, largura, altura):
-    return imagem.subsample(imagem.width() // largura, imagem.height() // altura)
+    return imagem.resize((largura, altura), Image.LANCZOS)
 
 # Função para animar o GIF do rodapé
 def animar_gif_rodape(ind):
     try:
-        frame = tk.PhotoImage(file=caminho_logo_rodape, format=f"gif -index {ind}")
+        frame = Image.open(caminho_logo_rodape)
+        frame.seek(ind)
         frame = redimensionar_imagem(frame, 200, 100)
-        label_logo_rodape.configure(image=frame)
-        label_logo_rodape.image = frame
+        frame_image = ImageTk.PhotoImage(frame)
+        label_logo_rodape.configure(image=frame_image)
+        label_logo_rodape.image = frame_image
         ind += 1
-        janela_login.after(velocidade_animacao, animar_gif_rodape, ind)
-    except tk.TclError:
+        janela_login.after(100, animar_gif_rodape, ind)
+    except EOFError:
         ind = 0
-        janela_login.after(velocidade_animacao, animar_gif_rodape, ind)
+        janela_login.after(100, animar_gif_rodape, ind)
 
 # Iniciar a animação do GIF do rodapé
 janela_login.after(0, animar_gif_rodape, 0)
-
-# Adicionar um controle deslizante para ajustar a velocidade da animação
-def ajustar_velocidade(val):
-    global velocidade_animacao
-    velocidade_animacao = int(val)
 
 ########################################################## FIM DO RODAPÉ DO PROGRAMA ##########################################################################
 
