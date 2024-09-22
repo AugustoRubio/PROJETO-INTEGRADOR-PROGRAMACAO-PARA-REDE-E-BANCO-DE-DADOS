@@ -144,25 +144,151 @@ def abrir_segunda_janela():
     
     janela_principal = tk.Tk()
     janela_principal.title("Menu Principal")
-    janela_principal.geometry("800x800")
+    janela_principal.geometry("400x400")
     
-    btn_escanear = tk.Button(janela_principal, text="Escanear a Rede", command=escanear_rede)
-    btn_escanear.pack(pady=20)
+    # Função para corrigir a posição dos botões
+    def corrigir_posicao_botoes():
+        for widget in janela_principal.winfo_children():
+            if isinstance(widget, tk.Button):
+                widget.pack_configure(pady=10)
+    
+    btn_escanear = tk.Button(janela_principal, text="Escanear a Rede", command=scanner)
+    btn_escanear.pack(pady=10)
     
     btn_listar = tk.Button(janela_principal, text="Listar Informações", command=listar_informacoes)
-    btn_listar.pack(pady=20)
+    btn_listar.pack(pady=10)
     
     btn_sair = tk.Button(janela_principal, text="Sair", command=janela_principal.quit)
-    btn_sair.pack(pady=20)
+    btn_sair.pack(pady=10)
+    
+    corrigir_posicao_botoes()
     
     janela_principal.mainloop()
 
-# Funções de exemplo para os botões da segunda janela
-def escanear_rede():
-    messagebox.showinfo("Escanear", "Função de escanear a rede ainda não implementada.")
+def scanner():
+    def escanear_propria_rede():
+        # Obtém o endereço IP e a máscara de sub-rede
+        ip = socket.gethostbyname(socket.gethostname())
+        mascara = ipaddress.IPv4Network(f"{ip}/24", strict=False).netmask
+        rede = ipaddress.IPv4Network(f"{ip}/{mascara}", strict=False)
+        
+        # Configura o scanner Nmap
+        nm = nmap.PortScanner()
+        nm.scan(hosts=str(rede), arguments='-p 22,80')
+        
+        # Processa os resultados
+        resultados = []
+        for host in nm.all_hosts():
+            hostname = nm[host].hostname()
+            mac_address = nm[host]['addresses'].get('mac', 'N/A')
+            ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
+            porta_22 = 'open' if nm[host]['tcp'][22]['state'] == 'open' else 'closed'
+            porta_80 = 'open' if nm[host]['tcp'][80]['state'] == 'open' else 'closed'
+            resultados.append((hostname, mac_address, ip_address, porta_22, porta_80))
+        
+        # Guarda os resultados no banco de dados
+        with sqlite3.connect(arquivo) as conn:
+            cursor = conn.cursor()
+            for resultado in resultados:
+                cursor.execute('''
+                    INSERT INTO escaneamentos (data, hostname, mac_address, ip, porta_22, porta_80)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3], resultado[4]))
+            conn.commit()
+
+    def escanear_outra_rede():
+        def iniciar_escaneamento():
+            rede = entry_rede.get()
+            nm = nmap.PortScanner()
+            nm.scan(hosts=rede, arguments='-p 22,80')
+            
+            resultados = []
+            for host in nm.all_hosts():
+                hostname = nm[host].hostname()
+                mac_address = nm[host]['addresses'].get('mac', 'N/A')
+                ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
+                porta_22 = 'open' if nm[host]['tcp'][22]['state'] == 'open' else 'closed'
+                porta_80 = 'open' if nm[host]['tcp'][80]['state'] == 'open' else 'closed'
+                resultados.append((hostname, mac_address, ip_address, porta_22, porta_80))
+            
+            # Guarda os resultados no banco de dados
+            with sqlite3.connect(arquivo) as conn:
+                cursor = conn.cursor()
+                for resultado in resultados:
+                    cursor.execute('''
+                        INSERT INTO escaneamentos (data, hostname, mac_address, ip, porta_22, porta_80)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3], resultado[4]))
+                conn.commit()
+        
+        janela_outra_rede = tk.Toplevel()
+        janela_outra_rede.title("Escanear Outra Rede")
+        janela_outra_rede.geometry("400x200")
+        
+        label_rede = tk.Label(janela_outra_rede, text="Digite a rede (ex: 192.168.1.0/24):")
+        label_rede.pack(pady=5)
+        entry_rede = tk.Entry(janela_outra_rede)
+        entry_rede.pack(pady=5)
+        
+        btn_iniciar = tk.Button(janela_outra_rede, text="Iniciar Escaneamento", command=iniciar_escaneamento)
+        btn_iniciar.pack(pady=20)
+    
+    janela_opcoes = tk.Toplevel()
+    janela_opcoes.title("Opções de Escaneamento")
+    janela_opcoes.geometry("400x200")
+
+    # Obtém o endereço IP e a máscara de sub-rede
+    ip = socket.gethostbyname(socket.gethostname())
+    mascara = ipaddress.IPv4Network(f"{ip}/24", strict=False).netmask
+    rede = ipaddress.IPv4Network(f"{ip}/{mascara}", strict=False)
+
+    # Exibe a rede do usuário
+    label_rede_usuario = tk.Label(janela_opcoes, text=f"Sua rede: {rede}")
+    label_rede_usuario.pack(pady=5)
+
+    btn_propria_rede = tk.Button(janela_opcoes, text="Escanear Própria Rede", command=escanear_propria_rede)
+    btn_propria_rede.pack(pady=5)
+    
+    btn_outra_rede = tk.Button(janela_opcoes, text="Escanear Outra Rede", command=escanear_outra_rede)
+    btn_outra_rede.pack(pady=5)
+    
+    btn_voltar = tk.Button(janela_opcoes, text="Voltar ao Menu Principal", command=janela_opcoes.destroy)
+    btn_voltar.pack(pady=5)
+
+    janela_opcoes.mainloop()
+    
 
 def listar_informacoes():
-    messagebox.showinfo("Listar", "Função de listar informações ainda não implementada.")
+    def buscar_informacoes():
+        data = entry_data.get()
+        try:
+            data_formatada = datetime.strptime(data, '%d/%m/%Y').strftime('%Y-%m-%d')
+            with sqlite3.connect(arquivo) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM escaneamentos WHERE date(data) = ?", (data_formatada,))
+                resultados = cursor.fetchall()
+                
+                if resultados:
+                    resultado_texto = "\n".join([f"ID: {r[0]}, Data: {r[1]}, Hostname: {r[2]}, MAC: {r[3]}, IP: {r[4]}, Porta 22: {r[5]}, Porta 80: {r[6]}" for r in resultados])
+                    messagebox.showinfo("Resultados", resultado_texto)
+                else:
+                    messagebox.showinfo("Resultados", "Nenhum resultado encontrado para a data fornecida.")
+        except ValueError:
+            messagebox.showerror("Erro", "Formato de data inválido. Use o formato DIA/MÊS/ANO.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao conectar com o banco de dados: {e}")
+
+    janela_busca = tk.Toplevel()
+    janela_busca.title("Buscar Informações")
+    janela_busca.geometry("400x200")
+
+    label_data = tk.Label(janela_busca, text="Digite a data (DIA/MÊS/ANO):")
+    label_data.pack(pady=5)
+    entry_data = tk.Entry(janela_busca)
+    entry_data.pack(pady=5)
+
+    btn_buscar = tk.Button(janela_busca, text="Buscar", command=buscar_informacoes)
+    btn_buscar.pack(pady=20)
 
 # Configuração da janela de login
 janela_login = tk.Tk()
