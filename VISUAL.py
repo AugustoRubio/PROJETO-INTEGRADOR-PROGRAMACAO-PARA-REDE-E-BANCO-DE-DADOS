@@ -89,28 +89,28 @@ def verifica_base_inicial(arquivo):
 ########################################################## COMEÇA O PROGRAMA VISUAL ##########################################################################
 
 # Função para abrir a janela de sucesso
-def abrir_janela_sucesso():
-    messagebox.showinfo("Sucesso", "Conexão com o banco de dados efetuada com sucesso!")
+#def abrir_janela_sucesso():
+#    messagebox.showinfo("Sucesso", "Conexão com o banco de dados efetuada com sucesso!")
 
 # Função para verificar a conexão com o banco de dados
-def verificar_conexao():
-    try:
-        conn = sqlite3.connect('usuarios.db')
-        cursor = conn.cursor()
+# def verificar_conexao():
+#     try:
+#         conn = sqlite3.connect('usuarios.db')
+#         cursor = conn.cursor()
         
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios';")
-        resultado = cursor.fetchone()
+#         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usuarios';")
+#         resultado = cursor.fetchone()
         
-        if resultado:
-            abrir_janela_sucesso()
-        else:
-            messagebox.showerror("Erro", "Tabela 'usuarios' não encontrada no banco de dados!")
+#         if resultado:
+#             abrir_janela_sucesso()
+#         else:
+#             messagebox.showerror("Erro", "Tabela 'usuarios' não encontrada no banco de dados!")
         
-    except sqlite3.Error as e:
-        messagebox.showerror("Erro", f"Erro ao conectar com o banco de dados: {e}")
+#     except sqlite3.Error as e:
+#         messagebox.showerror("Erro", f"Erro ao conectar com o banco de dados: {e}")
     
 # Verificar a conexão com o banco de dados ao iniciar o programa
-verificar_conexao()
+# verificar_conexao()
 
 # Função para verificar o login
 def verificar_login():
@@ -270,8 +270,16 @@ def listar_informacoes():
                 resultados = cursor.fetchall()
                 
                 if resultados:
-                    resultado_texto = "\n".join([f"ID: {r[0]}, Data: {r[1]}, Hostname: {r[2]}, MAC: {r[3]}, IP: {r[4]}, Porta 22: {r[5]}, Porta 80: {r[6]}" for r in resultados])
-                    messagebox.showinfo("Resultados", resultado_texto)
+                    resultado_texto = "\n".join([
+                        f"ID: {r[0]} | Data: {r[1]} | Hostname: {r[2]} | MAC: {r[3]} | IP: {r[4]} | Porta 22: {r[5]} | Porta 80: {r[6]}"
+                        for r in resultados
+                    ])
+                    janela_resultados = tk.Toplevel()
+                    janela_resultados.title("Resultados")
+                    janela_resultados.geometry("600x400")
+                    text_resultados = tk.Text(janela_resultados, wrap="word")
+                    text_resultados.insert("1.0", resultado_texto)
+                    text_resultados.pack(expand=True, fill="both")
                 else:
                     messagebox.showinfo("Resultados", "Nenhum resultado encontrado para a data fornecida.")
         except ValueError:
@@ -343,15 +351,23 @@ label_usuario = tk.Label(janela_login, text="Usuário:", font=fonte_padrao)
 label_usuario.pack(pady=5)
 entry_usuario = tk.Entry(janela_login, font=fonte_padrao)
 entry_usuario.pack(pady=5)
+entry_usuario.focus_set()  # Configura o cursor do teclado para o campo de login
 
 label_senha = tk.Label(janela_login, text="Senha:", font=fonte_padrao)
 label_senha.pack(pady=5)
 entry_senha = tk.Entry(janela_login, show="*", font=fonte_padrao)
 entry_senha.pack(pady=5)
 
+# Função para permitir login ao pressionar Enter
+def pressionar_enter(event):
+    verificar_login()
+
 # Botão de login
 btn_login = tk.Button(janela_login, text="Login", command=verificar_login, font=fonte_padrao)
 btn_login.pack(pady=20)
+
+# Bind da tecla Enter para o campo de senha
+entry_senha.bind('<Return>', pressionar_enter)
 
 ########################################################## IMPLEMENTA LOGO NO RODAPÉ DO PROGRAMA ##########################################################################
 # Caminho da imagem GIF do rodapé
