@@ -37,6 +37,7 @@ import psutil
 #Biblioteca para manipulação de imagens
 import PIL
 from PIL import Image, ImageTk
+from tkinter import font
 
 ########################################################## FAZ AS VERIFICACOES INICIAIS DO BANCO DE DADOS DO ANALISADOR DE REDE ###########################
 # Define a pasta da criação do arquivo a mesma do arquivo .py
@@ -334,19 +335,22 @@ janela_login.after(0, animar_gif, 0)
 
 ########################################################## FIM DO TOPO DO PROGRAMA ##########################################################################
 
+# Define a fonte padrão
+fonte_padrao = ("Terminal", 18)
+
 # Campos de entrada para usuário e senha
-label_usuario = tk.Label(janela_login, text="Usuário:")
+label_usuario = tk.Label(janela_login, text="Usuário:", font=fonte_padrao)
 label_usuario.pack(pady=5)
-entry_usuario = tk.Entry(janela_login)
+entry_usuario = tk.Entry(janela_login, font=fonte_padrao)
 entry_usuario.pack(pady=5)
 
-label_senha = tk.Label(janela_login, text="Senha:")
+label_senha = tk.Label(janela_login, text="Senha:", font=fonte_padrao)
 label_senha.pack(pady=5)
-entry_senha = tk.Entry(janela_login, show="*")
+entry_senha = tk.Entry(janela_login, show="*", font=fonte_padrao)
 entry_senha.pack(pady=5)
 
 # Botão de login
-btn_login = tk.Button(janela_login, text="Login", command=verificar_login)
+btn_login = tk.Button(janela_login, text="Login", command=verificar_login, font=fonte_padrao)
 btn_login.pack(pady=20)
 
 ########################################################## IMPLEMENTA LOGO NO RODAPÉ DO PROGRAMA ##########################################################################
