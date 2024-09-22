@@ -62,7 +62,8 @@ def verifica_arquivo(arquivo):
 
 def cria_banco(arquivo):
     with sqlite3.connect(arquivo) as conn:
-        cursor = conn.cursor()
+        with sqlite3.connect(arquivo) as conn:
+            cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS escaneamentos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,11 +71,11 @@ def cria_banco(arquivo):
                 hostname TEXT,
                 mac_address TEXT,
                 ip TEXT,
-                porta_22 TEXT,
-                porta_80 TEXT
+                portas TEXT
             )
         ''')
         conn.commit()
+        
 
 #Verifica se o BANCO DE DADOS possui a estrutura inicial correta, se não tiver cria a estrutura.
 def verifica_base_inicial(arquivo):
@@ -168,72 +169,142 @@ def abrir_segunda_janela():
 
 def scanner():
     def escanear_propria_rede():
-        # Obtém o endereço IP e a máscara de sub-rede
-        ip = socket.gethostbyname(socket.gethostname())
-        mascara = ipaddress.IPv4Network(f"{ip}/24", strict=False).netmask
-        rede = ipaddress.IPv4Network(f"{ip}/{mascara}", strict=False)
-        
-        # Configura o scanner Nmap
-        nm = nmap.PortScanner()
-        nm.scan(hosts=str(rede), arguments='-p 22,80')
-        
-        # Processa os resultados
-        resultados = []
-        for host in nm.all_hosts():
-            hostname = nm[host].hostname()
-            mac_address = nm[host]['addresses'].get('mac', 'N/A')
-            ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
-            porta_22 = 'open' if nm[host]['tcp'][22]['state'] == 'open' else 'closed'
-            porta_80 = 'open' if nm[host]['tcp'][80]['state'] == 'open' else 'closed'
-            resultados.append((hostname, mac_address, ip_address, porta_22, porta_80))
-        
-        # Guarda os resultados no banco de dados
-        with sqlite3.connect(arquivo) as conn:
-            cursor = conn.cursor()
-            for resultado in resultados:
-                cursor.execute('''
-                    INSERT INTO escaneamentos (data, hostname, mac_address, ip, porta_22, porta_80)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3], resultado[4]))
-            conn.commit()
-
-    def escanear_outra_rede():
         def iniciar_escaneamento():
-            rede = entry_rede.get()
+            portas_selecionadas = []
+            if var_ssh.get():
+                portas_selecionadas.append('22')
+            if var_http.get():
+                portas_selecionadas.append('80')
+            if var_https.get():
+                portas_selecionadas.append('443')
+            
+            portas = ','.join(portas_selecionadas) if portas_selecionadas else '22'  # Porta padrão
+            
+            argumentos = []
+            
+            if var_hostname.get():
+                argumentos.append('-R')
+            if portas:
+                argumentos.append(f'-p {portas}')
+            
+            argumentos_str = ' '.join(argumentos)
             nm = nmap.PortScanner()
-            nm.scan(hosts=rede, arguments='-p 22,80')
+            nm.scan(hosts=str(rede), arguments=argumentos_str)
             
             resultados = []
             for host in nm.all_hosts():
-                hostname = nm[host].hostname()
+                hostname = nm[host].hostname() if var_hostname.get() else 'N/A'
                 mac_address = nm[host]['addresses'].get('mac', 'N/A')
                 ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
-                porta_22 = 'open' if nm[host]['tcp'][22]['state'] == 'open' else 'closed'
-                porta_80 = 'open' if nm[host]['tcp'][80]['state'] == 'open' else 'closed'
-                resultados.append((hostname, mac_address, ip_address, porta_22, porta_80))
+                portas_abertas = ', '.join([f"{port}/ABERTA" if nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in portas.split(',')]) or 'N/D'
+                resultados.append((hostname, mac_address, ip_address, portas_abertas))
             
             # Guarda os resultados no banco de dados
             with sqlite3.connect(arquivo) as conn:
                 cursor = conn.cursor()
                 for resultado in resultados:
                     cursor.execute('''
-                        INSERT INTO escaneamentos (data, hostname, mac_address, ip, porta_22, porta_80)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3], resultado[4]))
+                        INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
+                conn.commit()
+        
+        janela_propria_rede = tk.Toplevel()
+        janela_propria_rede.title("Escanear Própria Rede")
+        janela_propria_rede.geometry("400x300")
+        
+        var_hostname = tk.BooleanVar()
+        var_ssh = tk.BooleanVar()
+        var_http = tk.BooleanVar()
+        var_https = tk.BooleanVar()
+        
+        chk_hostname = tk.Checkbutton(janela_propria_rede, text="Incluir Hostname (-R)", variable=var_hostname)
+        chk_hostname.pack(pady=5)
+        
+        chk_ssh = tk.Checkbutton(janela_propria_rede, text="Porta 22 (SSH)", variable=var_ssh)
+        chk_ssh.pack(pady=5)
+        
+        chk_http = tk.Checkbutton(janela_propria_rede, text="Porta 80 (HTTP)", variable=var_http)
+        chk_http.pack(pady=5)
+        
+        chk_https = tk.Checkbutton(janela_propria_rede, text="Porta 443 (HTTPS)", variable=var_https)
+        chk_https.pack(pady=5)
+        
+        btn_iniciar = tk.Button(janela_propria_rede, text="Iniciar Escaneamento", command=iniciar_escaneamento)
+        btn_iniciar.pack(pady=20)
+
+    def escanear_outra_rede():
+        def iniciar_escaneamento():
+            rede = entry_rede.get()
+            portas_selecionadas = []
+            if var_ssh.get():
+                portas_selecionadas.append('22')
+            if var_http.get():
+                portas_selecionadas.append('80')
+            if var_https.get():
+                portas_selecionadas.append('443')
+            
+            portas = ','.join(portas_selecionadas) if portas_selecionadas else '22'  # Porta padrão
+            
+            argumentos = []
+            
+            if var_hostname.get():
+                argumentos.append('-R')
+            if portas:
+                argumentos.append(f'-p {portas}')
+            
+            argumentos_str = ' '.join(argumentos)
+            nm = nmap.PortScanner()
+            nm.scan(hosts=rede, arguments=argumentos_str)
+            
+            resultados = []
+            for host in nm.all_hosts():
+                hostname = nm[host].hostname() if var_hostname.get() else 'N/A'
+                mac_address = nm[host]['addresses'].get('mac', 'N/A')
+                ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
+                portas_abertas = ', '.join([f"{port}/ABERTA" if nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in portas.split(',')]) or 'N/D'
+                resultados.append((hostname, mac_address, ip_address, portas_abertas))
+            
+            # Guarda os resultados no banco de dados
+            with sqlite3.connect(arquivo) as conn:
+                cursor = conn.cursor()
+                for resultado in resultados:
+                    cursor.execute('''
+                        INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
                 conn.commit()
         
         janela_outra_rede = tk.Toplevel()
         janela_outra_rede.title("Escanear Outra Rede")
-        janela_outra_rede.geometry("400x200")
+        janela_outra_rede.geometry("400x300")
         
         label_rede = tk.Label(janela_outra_rede, text="Digite a rede (ex: 192.168.1.0/24):")
         label_rede.pack(pady=5)
         entry_rede = tk.Entry(janela_outra_rede)
         entry_rede.pack(pady=5)
         
+        var_hostname = tk.BooleanVar()
+        var_ssh = tk.BooleanVar()
+        var_http = tk.BooleanVar()
+        var_https = tk.BooleanVar()
+        
+        chk_hostname = tk.Checkbutton(janela_outra_rede, text="Incluir Hostname (-R)", variable=var_hostname)
+        chk_hostname.pack(pady=5)
+        
+        chk_ssh = tk.Checkbutton(janela_outra_rede, text="Porta 22 (SSH)", variable=var_ssh)
+        chk_ssh.pack(pady=5)
+        
+        chk_http = tk.Checkbutton(janela_outra_rede, text="Porta 80 (HTTP)", variable=var_http)
+        chk_http.pack(pady=5)
+        
+        chk_https = tk.Checkbutton(janela_outra_rede, text="Porta 443 (HTTPS)", variable=var_https)
+        chk_https.pack(pady=5)
+        
         btn_iniciar = tk.Button(janela_outra_rede, text="Iniciar Escaneamento", command=iniciar_escaneamento)
         btn_iniciar.pack(pady=20)
-    
+            
+    # Cria uma nova janela para opções de escaneamento
     janela_opcoes = tk.Toplevel()
     janela_opcoes.title("Opções de Escaneamento")
     janela_opcoes.geometry("400x200")
@@ -242,7 +313,7 @@ def scanner():
     ip = socket.gethostbyname(socket.gethostname())
     mascara = ipaddress.IPv4Network(f"{ip}/24", strict=False).netmask
     rede = ipaddress.IPv4Network(f"{ip}/{mascara}", strict=False)
-
+            
     # Exibe a rede do usuário
     label_rede_usuario = tk.Label(janela_opcoes, text=f"Sua rede: {rede}")
     label_rede_usuario.pack(pady=5)
@@ -257,7 +328,6 @@ def scanner():
     btn_voltar.pack(pady=5)
 
     janela_opcoes.mainloop()
-    
 
 def listar_informacoes():
     def buscar_informacoes():
@@ -271,12 +341,12 @@ def listar_informacoes():
                 
                 if resultados:
                     resultado_texto = "\n".join([
-                        f"ID: {r[0]} | Data: {r[1]} | Hostname: {r[2]} | MAC: {r[3]} | IP: {r[4]} | Porta 22: {r[5]} | Porta 80: {r[6]}"
+                        f"ID: {r[0]} | Data: {r[1]} | Hostname: {r[2]} | MAC: {r[3]} | IP: {r[4]} | Portas: {r[5]}"
                         for r in resultados
                     ])
                     janela_resultados = tk.Toplevel()
                     janela_resultados.title("Resultados")
-                    janela_resultados.geometry("600x400")
+                    janela_resultados.geometry("1200x500")
                     text_resultados = tk.Text(janela_resultados, wrap="word")
                     text_resultados.insert("1.0", resultado_texto)
                     text_resultados.pack(expand=True, fill="both")
@@ -296,13 +366,20 @@ def listar_informacoes():
     entry_data = tk.Entry(janela_busca)
     entry_data.pack(pady=5)
 
+    def pressionar_enter_busca(event):
+        buscar_informacoes()
+
     btn_buscar = tk.Button(janela_busca, text="Buscar", command=buscar_informacoes)
     btn_buscar.pack(pady=20)
+
+    entry_data.bind('<Return>', pressionar_enter_busca)
 
 # Configuração da janela de login
 janela_login = tk.Tk()
 janela_login.title("Login")
 janela_login.geometry("800x800")
+# Verifica o arquivo do banco de dados ao iniciar o programa
+verifica_arquivo(arquivo)
 
 ########################################################## IMPLEMENTA LOGO NO TOPO DO PROGRAMA ##########################################################################
 # Função para carregar a imagem GIF
