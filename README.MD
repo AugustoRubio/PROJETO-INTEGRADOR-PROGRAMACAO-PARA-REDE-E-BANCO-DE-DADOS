@@ -5,10 +5,10 @@
 
 <p>SENAC - TURMA 2024 - 2º SEMESTRE</p>
 <p>ALUNOS:</p>
-Augusto Rubio da Câmara
-Erik Freitas Silva
-Hugo Santos de Lima
-Paulo Sérgio Aparecido Monteiro Feliciano
+<p>Augusto Rubio da Câmara</p>
+<p>Erik Freitas Silva</p>
+<p>Hugo Santos de Lima</p>
+<p>Paulo Sérgio Aparecido Monteiro Feliciano</p>
 
 #Começando:
 
