@@ -189,32 +189,35 @@ def scanner():
             janela_resultados.update()
             
             nm = nmap.PortScanner()
-            nm.scan(hosts=str(rede), arguments=argumentos_str)
-            
-            resultados = []
-            for host in nm.all_hosts():
-                hostname = nm[host].hostname() if var_quick_scan.get() else 'N/A'
-                mac_address = nm[host]['addresses'].get('mac', 'N/A')
-                ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
-                portas_abertas = ', '.join([f"{port}/ABERTA" if nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in portas.split(',')]) or 'N/D'
-                resultados.append((hostname, mac_address, ip_address, portas_abertas))
-            
-            # Guarda os resultados no banco de dados
-            with sqlite3.connect(arquivo) as conn:
-                cursor = conn.cursor()
-                for resultado in resultados:
-                    cursor.execute('''
-                        INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
-                conn.commit()
-            
-            # Atualiza a janela de resultados com os dados do escaneamento
-            resultado_texto = "\n".join([
-                f"Hostname: {r[0]} | MAC: {r[1]} | IP: {r[2]} | Portas: {r[3]}"
-                for r in resultados
-            ])
-            text_resultados.insert("end", resultado_texto)
+            try:
+                nm.scan(hosts=str(rede), arguments=argumentos_str)
+                
+                resultados = []
+                for host in nm.all_hosts():
+                    hostname = nm[host].hostname() if var_quick_scan.get() else 'N/A'
+                    mac_address = nm[host]['addresses'].get('mac', 'N/A')
+                    ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
+                    portas_abertas = ', '.join([f"{port}/ABERTA" if port.isdigit() and nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in portas.split(',') if port]) or 'N/D'
+                    resultados.append((hostname, mac_address, ip_address, portas_abertas))
+                
+                # Guarda os resultados relevantes no banco de dados
+                with sqlite3.connect(arquivo) as conn:
+                    cursor = conn.cursor()
+                    for resultado in resultados:
+                        cursor.execute('''
+                            INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
+                    conn.commit()
+                
+                # Atualiza a janela de resultados com os dados do escaneamento
+                resultado_texto = "\n".join([
+                    f"Hostname: {r[0]} | MAC: {r[1]} | IP: {r[2]} | Portas: {r[3]}"
+                    for r in resultados
+                ])
+                text_resultados.insert("end", resultado_texto)
+            except Exception as e:
+                text_resultados.insert("end", f"Erro ao executar o comando nmap: {e}")
             text_resultados.update()
 
         janela_propria_rede = tk.Toplevel()
@@ -280,32 +283,35 @@ def scanner():
             janela_resultados.update()
             
             nm = nmap.PortScanner()
-            nm.scan(hosts=rede, arguments=argumentos_str)
-            
-            resultados = []
-            for host in nm.all_hosts():
-                hostname = nm[host].hostname() if var_quick_scan.get() else 'N/A'
-                mac_address = nm[host]['addresses'].get('mac', 'N/A')
-                ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
-                portas_abertas = ', '.join([f"{port}/ABERTA" if nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in portas.split(',')]) or 'N/D'
-                resultados.append((hostname, mac_address, ip_address, portas_abertas))
-            
-            # Guarda os resultados no banco de dados
-            with sqlite3.connect(arquivo) as conn:
-                cursor = conn.cursor()
-                for resultado in resultados:
-                    cursor.execute('''
-                        INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
-                conn.commit()
-            
-            # Atualiza a janela de resultados com os dados do escaneamento
-            resultado_texto = "\n".join([
-                f"Hostname: {r[0]} | MAC: {r[1]} | IP: {r[2]} | Portas: {r[3]}"
-                for r in resultados
-            ])
-            text_resultados.insert("end", resultado_texto)
+            try:
+                nm.scan(hosts=rede, arguments=argumentos_str)
+                
+                resultados = []
+                for host in nm.all_hosts():
+                    hostname = nm[host].hostname() if var_quick_scan.get() else 'N/A'
+                    mac_address = nm[host]['addresses'].get('mac', 'N/A')
+                    ip_address = nm[host]['addresses'].get('ipv4', 'N/A')
+                    portas_abertas = ', '.join([f"{port}/ABERTA" if nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in portas.split(',')]) or 'N/D'
+                    resultados.append((hostname, mac_address, ip_address, portas_abertas))
+                
+                # Guarda os resultados relevantes no banco de dados
+                with sqlite3.connect(arquivo) as conn:
+                    cursor = conn.cursor()
+                    for resultado in resultados:
+                        cursor.execute('''
+                            INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
+                    conn.commit()
+                
+                # Atualiza a janela de resultados com os dados do escaneamento
+                resultado_texto = "\n".join([
+                    f"Hostname: {r[0]} | MAC: {r[1]} | IP: {r[2]} | Portas: {r[3]}"
+                    for r in resultados
+                ])
+                text_resultados.insert("end", resultado_texto)
+            except Exception as e:
+                text_resultados.insert("end", f"Erro ao executar o comando nmap: {e}")
             text_resultados.update()
 
         janela_outra_rede = tk.Toplevel()
