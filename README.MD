@@ -3,8 +3,8 @@
 ![Badge em Desenvolvimento](http://img.shields.io/static/v1?label=STATUS&message=EM%20DESENVOLVIMENTO&color=GREEN&style=for-the-badge)
 > :construction: Projeto em construção :construction:
 
-SENAC - TURMA 2024
-ALUNOS:
+<p>SENAC - TURMA 2024 - 2º SEMESTRE</p>
+<p>ALUNOS:</p>
 Augusto Rubio da Câmara
 Erik Freitas Silva
 Hugo Santos de Lima
