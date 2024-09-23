@@ -1,5 +1,5 @@
-    ![Logo](apoio\LOGO_R3.png)
-$SELECTION_PLACEHOLDER$PROJETO INTEGRADOR - GRUPO 08 - ANALISADOR DE REDE
+    ![Logo](https://github.com/AugustoRubio/PI/blob/main/apoio/LOGO_R3.png)
+PROJETO INTEGRADOR - GRUPO 08 - ANALISADOR DE REDE
     SENAC - TURMA 2024
     ALUNOS:
         Augusto Rubio da Câmara
