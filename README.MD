@@ -1,9 +1,11 @@
 <h1 align="center"> PROJETO INTEGRADOR - GRUPO 08 - ANALISADOR DE REDE </h1>
 
+<div>
 ![Badge em Desenvolvimento](http://img.shields.io/static/v1?label=STATUS&message=EM%20DESENVOLVIMENTO&color=GREEN&style=for-the-badge)
 > :construction: Projeto em construção :construction:
+</div>
 
-<p>SENAC - TURMA 2024 - 2º SEMESTRE</p>
+<p align="center">SENAC - TURMA 2024 - 2º SEMESTRE</p>
 <p>ALUNOS:</p>
 <p>Augusto Rubio da Câmara</p>
 <p>Erik Freitas Silva</p>
