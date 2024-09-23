@@ -14,7 +14,7 @@
 
 - `Passo 1`: Instale o Nmap no caminho padrão (C:\Program Files (x86)\Nmap\nmap.exe)
 
-- `Passo 2`: Instale as bibliotecas necessárias para o funcionamento do programa: Nmap (pip install python-nmap), tqdm (pip install tqdm), psutil(pip install psutil), pillow(pip install pillow), tkinter (pip install tk), sqlite3 (pip install db-sqlite3)
+- `Passo 2`: Instale as bibliotecas necessárias para o funcionamento do programa: Nmap (pip install python-nmap), tqdm (pip install tqdm), psutil(pip install psutil), pillow(pip install pillow), tkinter (pip install tk), sqlite3 (pip install db-sqlite3), tkcalendar (pip install tkcalendar)
 
 - `Passo 3`: Execute o arquivo criar_db.py para criar o banco de dados de login e usuário. Usuário padrão: admin, senha padrão: teste
 
