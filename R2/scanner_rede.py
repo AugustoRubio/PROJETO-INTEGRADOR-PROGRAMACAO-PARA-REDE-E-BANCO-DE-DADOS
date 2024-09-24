@@ -1,9 +1,16 @@
 import subprocess
+import tkinter as tk
+import nmap
+import sqlite3
+from datetime import datetime
+import socket
+import ipaddress
+import psutil
 
 def executar_scanner_rede():
     subprocess.run(["python", "c:/Users/AugustoRubio/Documents/GitHub/PI/scanner_rede.py"])
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     executar_scanner_rede()
 
 def scanner():

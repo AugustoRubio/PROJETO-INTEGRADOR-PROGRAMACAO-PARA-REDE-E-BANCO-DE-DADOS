@@ -7,18 +7,8 @@ from PIL import Image, ImageTk
 import hashlib
 import os
 import sqlite3
-#def conectar_banco_dados():
-    # try:
-    #     conn = sqlite3.connect('meu_banco_de_dados.db')
-    #     messagebox.showinfo("Conexão", "Conectado ao banco de dados com sucesso!")
-    #     return conn
-    # except sqlite3.Error as e:
-    #     messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
-    #     return None
-#    pass
-
-# Conectar ao banco de dados antes de iniciar a interface gráfica
-#conexao = conectar_banco_dados()
+import scanner_rede
+from scanner_rede import scanner
 
 # Função para verificar o login
 def verificar_login():
@@ -39,7 +29,7 @@ def verificar_login():
         resultado = cursor.fetchone()
         
         if resultado:
-            abrir_segunda_janela()
+            janela_principal()
         else:
             messagebox.showerror("Erro", "Usuário ou senha incorretos.")
         
@@ -47,8 +37,8 @@ def verificar_login():
     except sqlite3.Error as e:
         messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
 
-# Função para abrir a segunda janela
-def abrir_segunda_janela():
+# Função para abrir a janela principal
+def janela_principal():
     janela_login.destroy()
     
     janela_principal = tk.Tk()
@@ -60,10 +50,24 @@ def abrir_segunda_janela():
         for widget in janela_principal.winfo_children():
             widget.pack_configure(pady=10)
     
-    btn_escanear = tk.Button(janela_principal, text="Escanear a Rede", command=scanner)
+    def abrir_janela_escanear():
+        janela_escanear = tk.Toplevel(janela_principal)
+        janela_escanear.title("Escanear a Rede")
+        janela_escanear.geometry("300x200")
+
+        btn_escanear_propria_rede = tk.Button(janela_escanear, text="Escanear a própria rede", command=scanner_rede.escanear_propria_rede)
+        btn_escanear_propria_rede.pack(pady=10)
+
+        btn_escanear_outra_rede = tk.Button(janela_escanear, text="Escanear outra rede")
+        btn_escanear_outra_rede.pack(pady=10)
+
+        btn_voltar = tk.Button(janela_escanear, text="Voltar ao Menu Principal", command=janela_escanear.destroy)
+        btn_voltar.pack(pady=10)
+
+    btn_escanear = tk.Button(janela_principal, text="Escanear a Rede", command=abrir_janela_escanear)
     btn_escanear.pack(pady=10)
     
-    btn_listar = tk.Button(janela_principal, text="Listar Informações", command=listar_informacoes)
+    btn_listar = tk.Button(janela_principal, text="Listar Informações")
     btn_listar.pack(pady=10)
     
     btn_sair = tk.Button(janela_principal, text="Sair", command=janela_principal.quit)
