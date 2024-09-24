@@ -1,39 +1,51 @@
-from tkinter import messagebox, font
-from tkinter import ttk
 import tkinter as tk
-from PIL import Image, ImageTk
+from tkinter import messagebox
+from tkinter import font
 from datetime import datetime
+from tqdm import tqdm
+from PIL import Image, ImageTk
+import hashlib
+import os
+import sqlite3
+#def conectar_banco_dados():
+    # try:
+    #     conn = sqlite3.connect('meu_banco_de_dados.db')
+    #     messagebox.showinfo("Conexão", "Conectado ao banco de dados com sucesso!")
+    #     return conn
+    # except sqlite3.Error as e:
+    #     messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
+    #     return None
+#    pass
 
-# Função para abrir a janela de sucesso
-def abrir_janela_sucesso():
-    messagebox.showinfo("Sucesso", "Conexão com o banco de dados efetuada com sucesso!")
+# Conectar ao banco de dados antes de iniciar a interface gráfica
+#conexao = conectar_banco_dados()
 
 # Função para verificar o login
 def verificar_login():
     usuario = entry_usuario.get()
     senha = entry_senha.get()
     
-    # Criptografar a senha usando hashlib.sha256
+    # Criptografar a senha usando SHA256
     senha_criptografada = hashlib.sha256(senha.encode()).hexdigest()
     
     try:
-        conn = sqlite3.connect('banco.db')
+        # Obter o caminho absoluto do arquivo do banco de dados
+        caminho_banco_dados = os.path.join(os.path.dirname(__file__), 'banco.db')
+        conn = sqlite3.connect(caminho_banco_dados)
         cursor = conn.cursor()
         
-        cursor.execute("SELECT * FROM usuarios WHERE usuario=? AND senha=?", (usuario, senha_criptografada))
+        # Verificar se o usuário e a senha estão corretos
+        cursor.execute("SELECT * FROM usuarios WHERE usuario = ? AND senha = ?", (usuario, senha_criptografada))
         resultado = cursor.fetchone()
         
         if resultado:
             abrir_segunda_janela()
         else:
-            messagebox.showerror("Erro", "Usuário ou senha incorretos!")
+            messagebox.showerror("Erro", "Usuário ou senha incorretos.")
         
+        conn.close()
     except sqlite3.Error as e:
-        messagebox.showerror("Erro", f"Erro ao conectar com o banco de dados: {e}")
-    
-    finally:
-        if conn:
-            conn.close()
+        messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
 
 # Função para abrir a segunda janela
 def abrir_segunda_janela():
@@ -60,39 +72,6 @@ def abrir_segunda_janela():
     corrigir_posicao_botoes()
     
     janela_principal.mainloop()
-
-# Variável para armazenar a janela de resultados
-janela_resultados = None
-
-def listar_informacoes():
-    def buscar_informacoes():
-        pass
-
-    def selecionar_data():
-        pass
-
-    janela_busca = tk.Toplevel()
-    janela_busca.title("Buscar Informações")
-    janela_busca.geometry("400x200")
-
-    label_data = tk.Label(janela_busca, text="Digite a data (DIA/MÊS/ANO):")
-    label_data.pack(pady=5)
-    
-    data_atual = datetime.now().strftime('%d/%m/%Y')
-    entry_data = tk.Entry(janela_busca)
-    entry_data.insert(0, data_atual)
-    entry_data.pack(pady=5)
-
-    btn_selecionar_data = tk.Button(janela_busca, text="Selecionar Data", command=selecionar_data)
-    btn_selecionar_data.pack(pady=5)
-
-    def pressionar_enter_busca(event):
-        buscar_informacoes()
-
-    btn_buscar = tk.Button(janela_busca, text="Buscar", command=buscar_informacoes)
-    btn_buscar.pack(pady=20)
-
-    entry_data.bind('<Return>', pressionar_enter_busca)
 
 # Configuração da janela de login
 janela_login = tk.Tk()
