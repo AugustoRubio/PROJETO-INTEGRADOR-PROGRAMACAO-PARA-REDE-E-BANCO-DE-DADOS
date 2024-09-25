@@ -26,10 +26,8 @@ from PIL import Image, ImageTk
 from tkinter import font
 
 ########################################################## FAZ AS VERIFICACOES INICIAIS DO BANCO DE DADOS DO ANALISADOR DE REDE ###########################
-# Define a pasta da criação do arquivo a mesma do arquivo .py
-pasta = os.path.dirname(__file__)
-# Define qual o arquivo que vai usar e dentro da mesma pasta do .py
-arquivo = os.path.join(pasta, "arq_rede.db")
+# Define o caminho do arquivo do banco de dados
+arquivo = os.path.join(os.path.dirname(__file__), 'arq_rede.db')
 
 # Define o caminho do executável do nmap
 nmap_path = r"C:\Program Files (x86)\Nmap\nmap.exe"
@@ -108,7 +106,8 @@ def verificar_login():
     senha_criptografada = hashlib.sha256(senha.encode()).hexdigest()
     
     try:
-        conn = sqlite3.connect('usuarios.db')
+        db_path = os.path.join(os.path.dirname(__file__), 'usuarios.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         cursor.execute("SELECT * FROM usuarios WHERE usuario=? AND senha=?", (usuario, senha_criptografada))

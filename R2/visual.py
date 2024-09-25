@@ -8,7 +8,7 @@ import hashlib
 import os
 import sqlite3
 import scanner_rede
-from scanner_rede import scanner
+import scanner_rede as scanner_file
 
 # Função para verificar o login
 def verificar_login():
@@ -52,10 +52,10 @@ def janela_principal():
     
     def abrir_janela_escanear():
         janela_escanear = tk.Toplevel(janela_principal)
-        janela_escanear.title("Escanear a Rede")
+        janela_escanear.title("Funções de Scanner de Rede")
         janela_escanear.geometry("300x200")
 
-        btn_escanear_propria_rede = tk.Button(janela_escanear, text="Escanear a própria rede", command=scanner_rede.escanear_propria_rede)
+        btn_escanear_propria_rede = tk.Button(janela_escanear, text="Escanear a própria rede", command=scanner_file.scanner)
         btn_escanear_propria_rede.pack(pady=10)
 
         btn_escanear_outra_rede = tk.Button(janela_escanear, text="Escanear outra rede")
@@ -64,13 +64,13 @@ def janela_principal():
         btn_voltar = tk.Button(janela_escanear, text="Voltar ao Menu Principal", command=janela_escanear.destroy)
         btn_voltar.pack(pady=10)
 
-    btn_escanear = tk.Button(janela_principal, text="Escanear a Rede", command=abrir_janela_escanear)
-    btn_escanear.pack(pady=10)
+    btn_funcoes_scanner = tk.Button(janela_principal, text="FUNÇÕES DE SCANNER DE REDE", command=abrir_janela_escanear)
+    btn_funcoes_scanner.pack(pady=10)
     
-    btn_listar = tk.Button(janela_principal, text="Listar Informações")
-    btn_listar.pack(pady=10)
+    btn_configuracoes = tk.Button(janela_principal, text="CONFIGURAÇÕES DO PROGRAMA")
+    btn_configuracoes.pack(pady=10)
     
-    btn_sair = tk.Button(janela_principal, text="Sair", command=janela_principal.quit)
+    btn_sair = tk.Button(janela_principal, text="SAIR", command=janela_principal.quit)
     btn_sair.pack(pady=10)
     
     corrigir_posicao_botoes()

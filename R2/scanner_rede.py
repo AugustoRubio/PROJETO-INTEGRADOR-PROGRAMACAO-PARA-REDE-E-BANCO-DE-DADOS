@@ -6,12 +6,7 @@ from datetime import datetime
 import socket
 import ipaddress
 import psutil
-
-def executar_scanner_rede():
-    subprocess.run(["python", "c:/Users/AugustoRubio/Documents/GitHub/PI/scanner_rede.py"])
-
-if __name__ == "__main__": 
-    executar_scanner_rede()
+import os
 
 def scanner():
     def escanear_propria_rede():
@@ -61,11 +56,12 @@ def scanner():
                     resultados.append((hostname, mac_address, ip_address, portas_abertas))
                 
                 # Guarda os resultados relevantes no banco de dados
-                with sqlite3.connect(arquivo) as conn:
+                db_path = os.path.join(os.path.dirname(__file__), 'banco.db')
+                with sqlite3.connect(db_path) as conn:
                     cursor = conn.cursor()
                     for resultado in resultados:
                         cursor.execute('''
-                            INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
+                            INSERT INTO scanner (data, hostname, mac_address, ip, portas)
                             VALUES (?, ?, ?, ?, ?)
                         ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
                     conn.commit()
@@ -155,11 +151,12 @@ def scanner():
                     resultados.append((hostname, mac_address, ip_address, portas_abertas))
                 
                 # Guarda os resultados relevantes no banco de dados
-                with sqlite3.connect(arquivo) as conn:
+                db_path = os.path.join(os.path.dirname(__file__), 'banco.db')
+                with sqlite3.connect(db_path) as conn:
                     cursor = conn.cursor()
                     for resultado in resultados:
                         cursor.execute('''
-                            INSERT INTO escaneamentos (data, hostname, mac_address, ip, portas)
+                            INSERT INTO scanner (data, hostname, mac_address, ip, portas)
                             VALUES (?, ?, ?, ?, ?)
                         ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
                     conn.commit()
