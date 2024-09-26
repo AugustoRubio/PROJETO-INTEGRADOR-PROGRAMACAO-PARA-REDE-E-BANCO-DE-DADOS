@@ -233,6 +233,29 @@ def scanner():
     
     btn_outra_rede = tk.Button(janela_opcoes, text="Escanear Outra Rede", command=escanear_outra_rede)
     btn_outra_rede.pack(pady=5)
+
+    def visualizar_informacoes():
+        janela_informacoes = tk.Toplevel()
+        janela_informacoes.title("Informações Armazenadas")
+        janela_informacoes.geometry("800x600")
+        text_informacoes = tk.Text(janela_informacoes, wrap="word")
+        text_informacoes.pack(expand=True, fill="both")
+
+        db_path = os.path.join(os.path.dirname(__file__), 'banco.db')
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT data, hostname, mac_address, ip, portas FROM scanner')
+            registros = cursor.fetchall()
+        
+        informacoes_texto = "\n".join([
+            f"Data: {r[0]} | Hostname: {r[1]} | MAC: {r[2]} | IP: {r[3]} | Portas: {r[4]}"
+            for r in registros
+        ])
+        text_informacoes.insert("1.0", informacoes_texto)
+        text_informacoes.update()
+
+    btn_visualizar = tk.Button(janela_opcoes, text="Visualizar Informações Armazenadas", command=visualizar_informacoes)
+    btn_visualizar.pack(pady=5)
     
     btn_voltar = tk.Button(janela_opcoes, text="Voltar ao Menu Principal", command=janela_opcoes.destroy)
     btn_voltar.pack(pady=5)
