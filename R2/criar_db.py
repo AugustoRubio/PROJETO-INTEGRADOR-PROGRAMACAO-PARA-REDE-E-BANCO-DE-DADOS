@@ -33,14 +33,16 @@ def criar_tabelas(conn):
             
             #Chamamos o método execute do cursor para criar a tabela de usuários
             #Caso a tabela usuarios já exista, ela não será criada novamente
-            #Tabela de usuários: id (chave primária), usuário (texto não nulo e único) e senha (texto não nulo)
+            #Table de usuários: id (chave primária), usuario (texto não nulo e único), senha (texto não nulo), data_criacao (texto não nulo), nome_completo (texto não nulo), email (texto não nulo) e is_admin (inteiro não nulo com valor padrão 0)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     usuario TEXT NOT NULL UNIQUE,
                     senha TEXT NOT NULL,
                     data_criacao TEXT NOT NULL,
-                    nome_completo TEXT NOT NULL
+                    nome_completo TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    is_admin INTEGER NOT NULL DEFAULT 0
                 )
             ''')
             #Fim da criação da tabela de usuários
@@ -89,6 +91,7 @@ def criar_tabelas(conn):
                 18,  # Tamanho da fonte padrão
             ))
             print("Configuração padrão inserida com sucesso.")
+            #Fim da inserção da configuração padrão
 
             #Deixamos um usuário admin padrão para facilitar o acesso inicial ao sistema
             #Antes de inserir o usuário admin, criptografamos a senha usando o algoritmo SHA-256
@@ -101,10 +104,10 @@ def criar_tabelas(conn):
             #Se o usuário admin não existir, insere o usuário admin
             if not admin_exists:
                 #Precisamos selecionar os campos que serão inseridos na tabela de usuários
-                #Nesse caso são: usuario, senha, e nome_completo que aqui é "Administrador do Sistema"
+                #Inserimos o usuário admin com a senha criptografada, data de criação, nome completo, email e marcamos como administrador
                 cursor.execute('''
-                    INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo) VALUES (?, ?, datetime('now'), ?)
-                ''', ("admin", admin_password, "Administrador do Sistema"))
+                    INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin) VALUES (?, ?, datetime('now'), ?, ?, ?)
+                ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
                 print("Usuário admin inserido com sucesso.")
             else:
                 print("Usuário admin já existe.")
