@@ -97,19 +97,15 @@ def janela_principal():
         #Cria uma nova janela para as funções de scanner de rede usando o TKinter
         janela_escanear = tk.Toplevel(janela_principal)
         #Define o título da janela de scanner de rede
-        janela_escanear.title("Funções de Scanner de Rede")
+        janela_escanear.title("Scanner de Rede")
         #Define o tamanho da janela de scanner de rede em pixels
         janela_escanear.geometry("300x200")
 
         #Botão com função para escanear a própria rede usando o comando scanner_file.scanner
         #A variavel command é usada para chamar a função scanner_file.scanner ao clicar no botão
         #Foi definida a função scanner_file no inicio do código que referencia o arquivo scanner_rede.py e chama a função scanner dentro desse arquivo
-        btn_escanear_propria_rede = tk.Button(janela_escanear, text="Escanear a própria rede", command=scanner_file.scanner)
+        btn_escanear_propria_rede = tk.Button(janela_escanear, text="Escanear sua rede", command=scanner_file.scanner)
         btn_escanear_propria_rede.pack(pady=10)
-
-        #Botão com função para escanear outra rede seguindo o mesmo padrão do botão anterior
-        btn_escanear_outra_rede = tk.Button(janela_escanear, text="Escanear outra rede")
-        btn_escanear_outra_rede.pack(pady=10)
 
         btn_visualizar = tk.Button(janela_escanear, text="Visualizar Informações Armazenadas", command=visualizar_informacoes)
         btn_visualizar.pack(pady=5)
@@ -134,7 +130,7 @@ def janela_principal():
             #Cria uma nova janela para exibir as informações buscadas
             janela_informacoes = tk.Toplevel()
             janela_informacoes.title("Informações Armazenadas")
-            janela_informacoes.geometry("800x600")
+            janela_informacoes.geometry("1200x600")
             text_informacoes = tk.Text(janela_informacoes, wrap="word")
             text_informacoes.pack(expand=True, fill="both")
 
