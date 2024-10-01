@@ -38,7 +38,9 @@ def criar_tabelas(conn):
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     usuario TEXT NOT NULL UNIQUE,
-                    senha TEXT NOT NULL
+                    senha TEXT NOT NULL,
+                    data_criacao TEXT NOT NULL,
+                    nome_completo TEXT NOT NULL
                 )
             ''')
             #Fim da criação da tabela de usuários
@@ -58,16 +60,56 @@ def criar_tabelas(conn):
             ''')
             #Fim da criação da tabela de scanner
 
+            #Obtém o diretório do script e armazena na variável script_dir
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+
+            #Chamamos o método execute do cursor para criar a tabela de config_programa
+            #Caso a tabela config_programa já exista, ela não será criada novamente
+            #Tabela de config_programa: id (chave primária), data (texto não nulo), logo_principal (texto), logo_rodape (texto), fonte_principal (texto), tamanho_fonte (inteiro)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS config_programa (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    data TEXT NOT NULL,
+                    logo_principal TEXT,
+                    logo_rodape TEXT,
+                    fonte_principal TEXT,
+                    tamanho_fonte INTEGER
+                )
+            ''')
+            #Fim da criação da tabela de config_programa
+
+            #Insere uma configuração padrão na tabela config_programa
+            #Nessa configuração padrão, definimos o logo principal, logo do rodapé, fonte principal e tamanho da fonte
+            cursor.execute('''
+                INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte) VALUES (datetime('now'), ?, ?, ?, ?)
+            ''', (
+                os.path.join(script_dir, "apoio", "logo_principal.gif"),
+                os.path.join(script_dir, "apoio", "logo_rodape.gif"),
+                "Terminal",
+                18,  # Tamanho da fonte padrão
+            ))
+            print("Configuração padrão inserida com sucesso.")
+
             #Deixamos um usuário admin padrão para facilitar o acesso inicial ao sistema
             #Antes de inserir o usuário admin, criptografamos a senha usando o algoritmo SHA-256
             admin_password = hashlib.sha256("teste".encode()).hexdigest()
-            #Aqui executamos o cursor para inserir dentro da tabela usuarios o usuário admin e a senha criptografada
-            #Usamos o comando INSERT OR IGNORE para evitar que o usuário admin seja inserido mais de uma vez
-            cursor.execute('''
-                INSERT OR IGNORE INTO usuarios (usuario, senha) VALUES (?, ?)
-            ''', ("admin", admin_password))
             
-            print("Tabelas criadas com sucesso e usuário admin inserido.")
+            #Verifica se o usuário admin já existe
+            cursor.execute('SELECT * FROM usuarios WHERE usuario = ?', ("admin",))
+            admin_exists = cursor.fetchone()
+            
+            #Se o usuário admin não existir, insere o usuário admin
+            if not admin_exists:
+                #Precisamos selecionar os campos que serão inseridos na tabela de usuários
+                #Nesse caso são: usuario, senha, e nome_completo que aqui é "Administrador do Sistema"
+                cursor.execute('''
+                    INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo) VALUES (?, ?, datetime('now'), ?)
+                ''', ("admin", admin_password, "Administrador do Sistema"))
+                print("Usuário admin inserido com sucesso.")
+            else:
+                print("Usuário admin já existe.")
+            
+            print("Tabelas criadas com sucesso.")
     except sqlite3.Error as e:
         print(e)
 #Fim da função criar_tabelas
@@ -78,26 +120,29 @@ def mostrar_estrutura_tabelas(conn):
         with conn:
             cursor = conn.cursor()
             
-            #Aqui mostramos a estrutura da tabela de usuários usando o comando PRAGMA para retornar informações sobre a tabela
+            # Mostra a estrutura da tabela de usuários
             cursor.execute("PRAGMA table_info(usuarios)")
-            #Aqui guardamos as informações da tabela de usuários na variável usuarios_info usando o método fetchall do cursor
-            #O método fetchall retorna uma lista com todas as linhas do resultado da consulta
             usuarios_info = cursor.fetchall()
             print("Estrutura da tabela 'usuarios':")
-            #Aqui percorremos a lista de informações da tabela de usuários e exibimos na tela
             for column in usuarios_info:
                 print(column)
             
-            #Aqui mostramos a estrutura da tabela de scanner usando o comando PRAGMA para retornar informações sobre a tabela
-            #Usando o mesmo mecanismo anterior
+            # Mostra a estrutura da tabela de scanner
             cursor.execute("PRAGMA table_info(scanner)")
             scanner_info = cursor.fetchall()
             print("\nEstrutura da tabela 'scanner':")
             for column in scanner_info:
                 print(column)
+            
+            # Mostra a estrutura da tabela de config_programa
+            cursor.execute("PRAGMA table_info(config_programa)")
+            config_programa_info = cursor.fetchall()
+            print("\nEstrutura da tabela 'config_programa':")
+            for column in config_programa_info:
+                print(column)
     except sqlite3.Error as e:
         print(e)
-#Fim da função mostrar_estrutura_tabelas
+# Fim da função mostrar_estrutura_tabelas
 
 #Função principal para chamar as funções de criação de banco de dados, tabelas e mostrar a estrutura das tabelas
 def principal():

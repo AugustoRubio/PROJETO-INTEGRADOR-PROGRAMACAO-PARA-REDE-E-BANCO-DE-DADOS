@@ -28,6 +28,8 @@ import sqlite3
 #Importar o arquivo scanner_rede.py
 import scanner_rede
 import scanner_rede as scanner_file
+#Importar o arquivo dashboard.py
+import dashboard
 
 #Função para verificar se o login está correto
 def verificar_login():
@@ -194,6 +196,14 @@ def janela_principal():
         btn_buscar.pack(pady=10)
         #A função visualizar_informacoes acaba aqui
 
+    #Função para abrir a janela do dashboard ao clicar no botão "DASHBOARD"
+    def abrir_dashboard():
+        dashboard.abrir_dashboard()
+
+    #Botão para abrir a janela do dashboard ao clicar no botão "DASHBOARD"
+    btn_dashboard = tk.Button(janela_principal, text="DASHBOARD", command=abrir_dashboard)
+    btn_dashboard.pack(pady=10)
+
     #Aqui volta para a função janela_principal
     #Botão para abrir a janela de funções de scanner de rede ao clicar no botão "Funções de Scanner de Rede"
     btn_funcoes_scanner = tk.Button(janela_principal, text="FUNÇÕES DE SCANNER DE REDE", command=abrir_janela_escanear)
@@ -219,15 +229,28 @@ janela_login = tk.Tk()
 janela_login.title("Login")
 janela_login.geometry("800x800")
 
-#Função para carregar a imagem GIF
+#Função que verifica se o arquivo de imagem foi carregado corretamente, caso não exibe uma mensagem de erro
 def carregar_gif(caminho):
-    # Retorna a imagem GIF carregada
-    return Image.open(caminho)
+    try:
+        # Retorna a imagem GIF carregada
+        return Image.open(caminho)
+    except FileNotFoundError:
+        messagebox.showerror("Erro", f"Arquivo não encontrado: {caminho}")
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao carregar a imagem: {e}")
+    return None
 
 #Parte do Header da janela de login
-#Caminho da imagem GIF do logo
-#Guarda dentro da variavel caminho_logo o caminho do arquivo teste.gif dentro da pasta apoio
-caminho_logo = os.path.join(os.path.dirname(__file__), 'apoio', 'teste.gif')
+#Conecta ao banco de dados para obter o caminho da imagem do logo principal
+caminho_banco_dados = os.path.join(os.path.dirname(__file__), 'banco.db')
+try:
+    with sqlite3.connect(caminho_banco_dados) as conn:
+        cursor = conn.cursor()
+        #Busca o caminho da imagem do logo principal na tabela config_programa dentro de logo_principal
+        cursor.execute("SELECT logo_principal FROM config_programa")
+        caminho_logo = cursor.fetchone()[0]
+except sqlite3.Error as e:
+    messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
 
 #Guarda a imagem GIF carregada na variavel imagem_logo
 imagem_logo = carregar_gif(caminho_logo)
@@ -295,10 +318,15 @@ entry_senha.bind('<Return>', pressionar_enter)
 btn_login = tk.Button(janela_login, text="Login", command=verificar_login, font=fonte_padrao)
 btn_login.pack(pady=20)
 
-#Parte do rodapé da janela de login
-#Caminho da imagem GIF do rodapé
-#Guarda dentro da variavel caminho_logo_rodape o caminho do arquivo teste1.gif dentro da pasta apoio
-caminho_logo_rodape = os.path.join(os.path.dirname(__file__), 'apoio', 'teste1.gif')
+#Parte do rodapé da janela de login que procura dentro do banco de dados o caminho da imagem GIF do rodapé
+#Mesma lógica do logo principal
+try:
+    with sqlite3.connect(caminho_banco_dados) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT logo_rodape FROM config_programa")
+        caminho_logo_rodape = cursor.fetchone()[0]
+except sqlite3.Error as e:
+    messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
 
 #Guardar a imagem GIF carregada na variável imagem_logo_rodape
 imagem_logo_rodape = carregar_gif(caminho_logo_rodape)
