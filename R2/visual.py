@@ -1,6 +1,9 @@
 #Bibliotecas de imagem e interface gráfica
 #TKinter é uma biblioteca padrão do Python para criar interfaces gráficas
 import tkinter as tk
+from tkinter import ttk
+#Bibliotecas de calendário do tkinter
+from tkcalendar import Calendar
 #Bibliotecas de imagem e interface gráfica
 #Bibliotecas de mensagem do tkinter
 from tkinter import messagebox
@@ -108,16 +111,98 @@ def janela_principal():
         btn_escanear_outra_rede = tk.Button(janela_escanear, text="Escanear outra rede")
         btn_escanear_outra_rede.pack(pady=10)
 
+        btn_visualizar = tk.Button(janela_escanear, text="Visualizar Informações Armazenadas", command=visualizar_informacoes)
+        btn_visualizar.pack(pady=5)
+
+
         #Botão para voltar ao menu principal ao clicar no botão "Voltar ao Menu Principal" e fecha a janela de funções de scanner de rede
         btn_voltar = tk.Button(janela_escanear, text="Voltar ao Menu Principal", command=janela_escanear.destroy)
         btn_voltar.pack(pady=10)
         #Função da janela de scanner acaba aqui
 
+    #Função para visualizar as informações armazenadas no banco de dados do scanner de rede
+    def visualizar_informacoes():
+        #Principal que irá receber a seleção da data e buscar as informações no banco de dados
+        def buscar_informacoes(data_selecionada):
+            #Testa se a data inserida é válida. Essa função precisa ser chamada antes de converter a data para o formato do banco de dados
+            try:
+                data_selecionada = datetime.strptime(data_selecionada, "%d/%m/%Y").strftime("%Y-%m-%d")
+            except ValueError:
+                messagebox.showerror("Erro", "Formato de data inválido. Use DIA/MÊS/ANO.")
+                return
+
+            #Cria uma nova janela para exibir as informações buscadas
+            janela_informacoes = tk.Toplevel()
+            janela_informacoes.title("Informações Armazenadas")
+            janela_informacoes.geometry("800x600")
+            text_informacoes = tk.Text(janela_informacoes, wrap="word")
+            text_informacoes.pack(expand=True, fill="both")
+
+            #Conecta ao banco de dados e define a query SQL para buscar as informações
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT data, hostname, mac_address, ip, portas FROM scanner WHERE data LIKE ?', (f"{data_selecionada}%",))
+                #Armazena os resultados da busca dentro da variavel registros
+                registros = cursor.fetchall()
+
+                #Cria um texto formatado com as informações encontradas
+                informacoes_texto = "\n".join([
+                    f"Data: {r[0]} | Hostname: {r[1]} | MAC: {r[2]} | IP: {r[3]} | Portas: {r[4]}"
+                    for r in registros
+                ]) if registros else "Nenhuma informação encontrada para a data selecionada."
+
+                #Insere o texto formatado na caixa de texto da janela informacoes_texto e coloca o texto na posição 1.0 (linha 1, coluna 0)
+                text_informacoes.insert("1.0", informacoes_texto)
+                text_informacoes.update()
+            #A função buscar_informacoes acaba aqui
+
+        #Cria uma nova janela para selecionar a data juntamente com um calendario
+        janela_selecao_data = tk.Toplevel()
+        janela_selecao_data.title("Selecione a Data")
+        janela_selecao_data.geometry("300x400")
+
+        label_data = tk.Label(janela_selecao_data, text="Selecione a Data:")
+        label_data.pack(pady=10)
+
+        #Obtem o caminho do banco de dados
+        db_path = os.path.join(os.path.dirname(__file__), 'banco.db')
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            #Busca as datas únicas armazenadas no banco de dados
+            cursor.execute('SELECT DISTINCT data FROM scanner')
+            #Armazena as datas únicas encontradas dentro da variavel datas
+            datas = [row[0] for row in cursor.fetchall()]
+
+        #Cria uma variavel para armazenar a data atual
+        var_data = tk.StringVar(value=datetime.now().strftime("%d/%m/%Y"))
+        #Cria um campo de entrada de texto para a data
+        entry_data = tk.Entry(janela_selecao_data, textvariable=var_data)
+        entry_data.pack(pady=10)
+
+        #Cria uma divisa para separar o campo de entrada de texto do calendário
+        label_calendario = tk.Label(janela_selecao_data, text="Calendário:")
+        label_calendario.pack(pady=10)
+
+        #Função que cria um evento ao selecionar uma data no calendário
+        def selecionar_data(event):
+            var_data.set(cal.selection_get().strftime("%d/%m/%Y"))
+
+        #Cria um calendário para selecionar a data
+        cal = Calendar(janela_selecao_data, selectmode='day', date_pattern='dd/mm/yyyy')
+        cal.pack(pady=10)
+        #Vincula o evento da seleção da data para colocar dentro do campo de entrada de texto
+        cal.bind("<<CalendarSelected>>", selecionar_data)
+
+        #Cria um botão e chama a função buscar_informacoes ao clicar no botão
+        btn_buscar = tk.Button(janela_selecao_data, text="Buscar", command=lambda: buscar_informacoes(var_data.get()))
+        btn_buscar.pack(pady=10)
+        #A função visualizar_informacoes acaba aqui
+
     #Aqui volta para a função janela_principal
     #Botão para abrir a janela de funções de scanner de rede ao clicar no botão "Funções de Scanner de Rede"
     btn_funcoes_scanner = tk.Button(janela_principal, text="FUNÇÕES DE SCANNER DE REDE", command=abrir_janela_escanear)
     btn_funcoes_scanner.pack(pady=10)
-    
+
     #Botão para abrir a janela de configurações do programa ao clicar no botão "Configurações do Programa"
     btn_configuracoes = tk.Button(janela_principal, text="CONFIGURAÇÕES DO PROGRAMA")
     btn_configuracoes.pack(pady=10)
