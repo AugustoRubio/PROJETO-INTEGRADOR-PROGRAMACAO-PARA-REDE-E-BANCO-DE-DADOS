@@ -267,10 +267,10 @@ def janela_principal():
                 senha = entry_nova_senha.get()
                 nome_completo = entry_nome_completo.get()
                 email = entry_email.get()
-                is_admin = entry_is_admin.get()
+                is_admin = is_admin_var.get()
 
                 # Verifica se todos os campos foram preenchidos
-                if not all([usuario, senha, nome_completo, email, is_admin]):
+                if not all([usuario, senha, nome_completo, email]):
                     messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
                     return
 
