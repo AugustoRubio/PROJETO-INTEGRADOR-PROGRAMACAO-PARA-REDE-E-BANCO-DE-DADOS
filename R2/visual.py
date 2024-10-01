@@ -209,6 +209,112 @@ def janela_principal():
     btn_funcoes_scanner = tk.Button(janela_principal, text="FUNÇÕES DE SCANNER DE REDE", command=abrir_janela_escanear)
     btn_funcoes_scanner.pack(pady=10)
 
+    # Função para abrir a janela de configurações de usuários
+    def abrir_configuracoes_usuarios():
+        # Cria uma nova janela para as configurações de usuários
+        janela_configuracoes_usuarios = tk.Toplevel(janela_principal)
+        janela_configuracoes_usuarios.title("Configurações de Usuários")
+        janela_configuracoes_usuarios.geometry("400x300")
+
+        def adicionar_usuario():
+            # Cria uma nova janela para adicionar usuários
+            janela_adicionar_usuario = tk.Toplevel(janela_configuracoes_usuarios)
+            janela_adicionar_usuario.title("Adicionar Usuário")
+            janela_adicionar_usuario.geometry("400x400")
+
+            # Labels e campos de entrada para os dados do usuário
+            tk.Label(janela_adicionar_usuario, text="Usuário:").pack(pady=5)
+            entry_novo_usuario = tk.Entry(janela_adicionar_usuario)
+            entry_novo_usuario.pack(pady=5)
+
+            tk.Label(janela_adicionar_usuario, text="Senha:").pack(pady=5)
+            entry_nova_senha = tk.Entry(janela_adicionar_usuario, show="*")
+            entry_nova_senha.pack(pady=5)
+
+            tk.Label(janela_adicionar_usuario, text="Nome Completo:").pack(pady=5)
+            entry_nome_completo = tk.Entry(janela_adicionar_usuario)
+            entry_nome_completo.pack(pady=5)
+
+            tk.Label(janela_adicionar_usuario, text="Email:").pack(pady=5)
+            entry_email = tk.Entry(janela_adicionar_usuario)
+            entry_email.pack(pady=5)
+
+            # Label para a opção de administrador
+            label_pergunta_admin = tk.Label(janela_adicionar_usuario, text="Precisa ser administrador ?")
+            label_pergunta_admin.pack(pady=5)
+
+            # Variável para armazenar o estado da caixa de seleção
+            is_admin_var = tk.IntVar()
+
+            # Função para atualizar o texto ao lado da caixa de seleção
+            def atualizar_texto_admin():
+                if is_admin_var.get() == 1:
+                    label_admin_status.config(text="Será administrador")
+                else:
+                    label_admin_status.config(text="Não será administrador")
+
+            # Label para mostrar o status da seleção
+            label_admin_status = tk.Label(janela_adicionar_usuario, text="Não será administrador")
+            label_admin_status.pack(pady=5)
+
+            # Caixa de seleção para definir se o usuário é administrador
+            check_is_admin = tk.Checkbutton(janela_adicionar_usuario, variable=is_admin_var, command=atualizar_texto_admin)
+            check_is_admin.pack(pady=5)
+
+            # Função para salvar o novo usuário no banco de dados
+            def salvar_usuario():
+                usuario = entry_novo_usuario.get()
+                senha = entry_nova_senha.get()
+                nome_completo = entry_nome_completo.get()
+                email = entry_email.get()
+                is_admin = entry_is_admin.get()
+
+                # Verifica se todos os campos foram preenchidos
+                if not all([usuario, senha, nome_completo, email, is_admin]):
+                    messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
+                    return
+
+                # Criptografa a senha
+                senha_criptografada = hashlib.sha256(senha.encode()).hexdigest()
+                data_criacao = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                # Insere o novo usuário no banco de dados
+                try:
+                    with sqlite3.connect(caminho_banco_dados) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, (usuario, senha_criptografada, data_criacao, nome_completo, email, int(is_admin)))
+                        conn.commit()
+                        messagebox.showinfo("Sucesso", "Usuário adicionado com sucesso.")
+                        janela_adicionar_usuario.destroy()
+                except sqlite3.Error as e:
+                    messagebox.showerror("Erro", f"Erro ao adicionar usuário: {e}")
+
+            # Botão para salvar o novo usuário
+            btn_salvar_usuario = tk.Button(janela_adicionar_usuario, text="Salvar Usuário", command=salvar_usuario)
+            btn_salvar_usuario.pack(pady=20)
+
+        # Botão para adicionar usuários
+        btn_adicionar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Adicionar Usuários", command=adicionar_usuario)
+        btn_adicionar_usuarios.pack(pady=10)
+
+        # Botão para editar usuários existentes
+        btn_editar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Editar Usuários Existentes")
+        btn_editar_usuarios.pack(pady=10)
+
+        # Botão para visualizar alterações
+        btn_visualizar_alteracoes = tk.Button(janela_configuracoes_usuarios, text="Visualizar Alterações")
+        btn_visualizar_alteracoes.pack(pady=10)
+
+        # Botão para voltar ao menu principal
+        btn_voltar_menu_principal = tk.Button(janela_configuracoes_usuarios, text="Voltar ao Menu Principal", command=janela_configuracoes_usuarios.destroy)
+        btn_voltar_menu_principal.pack(pady=10)
+    # Botão para abrir a janela de configurações de usuários
+    btn_configuracoes_usuarios = tk.Button(janela_principal, text="CONFIGURAÇÕES DE USUÁRIOS", command=abrir_configuracoes_usuarios)
+    btn_configuracoes_usuarios.pack(pady=10)
+
     #Botão para abrir a janela de configurações do programa ao clicar no botão "Configurações do Programa"
     btn_configuracoes = tk.Button(janela_principal, text="CONFIGURAÇÕES DO PROGRAMA")
     btn_configuracoes.pack(pady=10)
