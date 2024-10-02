@@ -87,19 +87,17 @@ def verificar_login():
                 'usuario_admin': usuario_admin,
                 'usuario_comum': usuario_comum
             })
+            print("Login correto")
             janela_principal()
         # Se não, exibe uma mensagem de erro
         else:
             messagebox.showerror("Erro", "Usuário ou senha incorretos.")
-        
         # Fecha o cursor e a conexão com o banco de dados
         # Somente o close() é necessário
         conn.close()
     # Se ocorrer um erro ao conectar ao banco de dados, exibe uma mensagem de erro    
     except sqlite3.Error as e:
         messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
-    finally:
-        print("Login correto")
 
 #Função para abrir a janela principal após o login correto
 def janela_principal():
@@ -112,6 +110,10 @@ def janela_principal():
     janela_principal.title("Menu Principal")
     #Define a o tamanho da janela principal em pixels
     janela_principal.geometry("400x400")
+
+    # Label para mostrar o usuário logado e se é administrador ou não
+    label_usuario_logado = tk.Label(janela_principal, text=f"Usuário: {usuario_logado} ({'Admin' if is_admin_logado else 'Comum'})")
+    label_usuario_logado.pack(anchor='nw', padx=10, pady=10)
     
     #Função para organizar os botões na janela principal usando o pack_configure e função pady (padding)
     def corrigir_posicao_botoes():
@@ -335,23 +337,26 @@ def janela_principal():
             janela_editar_usuarios.geometry("600x400")
 
             # Função para buscar as informações do usuário selecionado
-            def buscar_informacoes_usuario(event):
+            def buscar_informacoes_usuario(event=None):
                 if not listbox_usuarios.curselection():
                     messagebox.showerror("Erro", "Nenhum usuário selecionado.")
                     return
-                usuario_selecionado = listbox_usuarios.get(listbox_usuarios.curselection())
+                usuario_selecionado = listbox_usuarios.get(listbox_usuarios.curselection()).split(" | ")[1]
                 try:
                     with sqlite3.connect(caminho_banco_dados) as conn:
                         cursor = conn.cursor()
-                        cursor.execute("SELECT * FROM usuarios WHERE usuario = ?", (usuario_selecionado,))
+                        cursor.execute("SELECT usuario, nome_completo, email, is_admin FROM usuarios WHERE usuario = ?", (usuario_selecionado,))
                         usuario_info = cursor.fetchone()
-                        entry_usuario_editar.delete(0, tk.END)
-                        entry_usuario_editar.insert(0, usuario_info[0])
-                        entry_nome_completo_editar.delete(0, tk.END)
-                        entry_nome_completo_editar.insert(0, usuario_info[3])
-                        entry_email_editar.delete(0, tk.END)
-                        entry_email_editar.insert(0, usuario_info[4])
-                        is_admin_var_editar.set(usuario_info[5])
+                        if usuario_info:
+                            entry_usuario_editar.delete(0, tk.END)
+                            entry_usuario_editar.insert(0, usuario_info[0])
+                            entry_nome_completo_editar.delete(0, tk.END)
+                            entry_nome_completo_editar.insert(0, usuario_info[1])
+                            entry_email_editar.delete(0, tk.END)
+                            entry_email_editar.insert(0, usuario_info[2])
+                            is_admin_var_editar.set(usuario_info[3])
+                        else:
+                            messagebox.showerror("Erro", "Usuário não encontrado.")
                 except sqlite3.Error as e:
                     messagebox.showerror("Erro", f"Erro ao buscar informações do usuário: {e}")
 
@@ -374,17 +379,18 @@ def janela_principal():
             listbox_usuarios.bind('<<ListboxSelect>>', buscar_informacoes_usuario)
 
             # Função para carregar os usuários na lista
-            try:
-                with sqlite3.connect(caminho_banco_dados) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT id, usuario, nome_completo, email, is_admin, ultimo_login FROM usuarios")
-                    usuarios = cursor.fetchall()
-                    listbox_usuarios.delete(0, tk.END)
-                    for usuario in usuarios:
-                        usuario_info = f"{usuario[0]} | {usuario[1]} | {usuario[2]} | {usuario[3]} | {'Admin' if usuario[4] else 'Comum'} | Último login: {usuario[5]}"
-                        listbox_usuarios.insert(tk.END, usuario_info)
-            except sqlite3.Error as e:
-                messagebox.showerror("Erro", f"Erro ao carregar usuários: {e}")
+            def carregar_usuarios():
+                try:
+                    with sqlite3.connect(caminho_banco_dados) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT id, usuario, nome_completo, email, is_admin, ultimo_login FROM usuarios")
+                        usuarios = cursor.fetchall()
+                        listbox_usuarios.delete(0, tk.END)
+                        for usuario in usuarios:
+                            usuario_info = f"{usuario[0]} | {usuario[1]} | {usuario[2]} | {usuario[3]} | {'Admin' if usuario[4] else 'Comum'} | Último login: {usuario[5]}"
+                            listbox_usuarios.insert(tk.END, usuario_info)
+                except sqlite3.Error as e:
+                    messagebox.showerror("Erro", f"Erro ao carregar usuários: {e}")
 
             # Função para salvar as alterações do usuário
             def salvar_alteracoes():
@@ -398,45 +404,33 @@ def janela_principal():
                     messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
                     return
 
-                # Atualiza as informações do usuário no banco de dados
-                try:
-                    with sqlite3.connect(caminho_banco_dados) as conn:
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            UPDATE usuarios
-                            SET nome_completo = ?, email = ?, is_admin = ?
-                            WHERE usuario = ?
-                        """, (nome_completo, email, int(is_admin), usuario))
-                        conn.commit()
-                        messagebox.showinfo("Sucesso", "Informações do usuário atualizadas com sucesso.")
-                except sqlite3.Error as e:
-                    messagebox.showerror("Erro", f"Erro ao atualizar informações do usuário: {e}")
+                 # Verifica se houve alterações nos campos do usuário
+                with sqlite3.connect(caminho_banco_dados) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT nome_completo, email, is_admin FROM usuarios WHERE usuario = ?", (usuario,))
+                    usuario_atual = cursor.fetchone()
+                             
+                    if usuario_atual:
+                        nome_completo_atual, email_atual, is_admin_atual = usuario_atual
+                            
+                        if nome_completo != nome_completo_atual or email != email_atual or int(is_admin) != is_admin_atual:
+                            # Atualiza as informações do usuário no banco de dados
+                            try:
+                                cursor.execute("""
+                                    UPDATE usuarios
+                                    SET nome_completo = ?, email = ?, is_admin = ?
+                                    WHERE usuario = ?
+                                """, (nome_completo, email, int(is_admin), usuario))
+                                conn.commit()
+                                messagebox.showinfo("Sucesso", "Informações do usuário atualizadas com sucesso.")
+                                carregar_usuarios()  # Recarrega a lista de usuários para refletir as alterações
+                            except sqlite3.Error as e:
+                                messagebox.showerror("Erro", f"Erro ao atualizar informações do usuário: {e}")
+                        else:
+                            messagebox.showinfo("Informação", "Nenhuma alteração detectada.")
+                    else:
+                        messagebox.showerror("Erro", "Usuário não encontrado.")
 
-            # Verifica se o usuário logado é administrador e armazena a informação de quem logou
-            try:
-                cursor = conn.cursor()
-                cursor.execute("SELECT is_admin FROM usuarios WHERE usuario = ?", (usuario_logado,))
-                usuario_info = cursor.fetchone()
-                if usuario_info:
-                    is_admin_logado = usuario_info[0]
-                    usuario_admin = usuario_logado if is_admin_logado else None
-                    usuario_comum = usuario_logado if not is_admin_logado else None
-                else:
-                    is_admin_logado = 0
-                    usuario_admin = None
-                    usuario_comum = None
-            except sqlite3.Error as e:
-                messagebox.showerror("Erro", f"Erro ao verificar permissões do usuário: {e}")
-                return
-
-            globals().update({
-                'usuario_logado': usuario_logado,
-                'is_admin_logado': is_admin_logado,
-                'usuario_admin': usuario_admin,
-                'usuario_comum': usuario_comum
-            })
-
-            # Campos de entrada para editar as informações do usuário
             tk.Label(janela_editar_usuarios, text="Usuário:").pack(pady=5)
             entry_usuario_editar = tk.Entry(janela_editar_usuarios)
             entry_usuario_editar.pack(pady=5)
