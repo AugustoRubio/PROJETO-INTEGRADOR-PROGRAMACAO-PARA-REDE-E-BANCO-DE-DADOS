@@ -557,9 +557,9 @@ def animar_gif(ind):
         ind += 1
         #Chama a função após 100 milissegundos para animar o próximo quadro controlando a velocidade da animação
         janela_login.after(100, animar_gif, ind)
-    #Se ocorrer um erro de final de arquivo (EOFError), reinicia a animação
+    #Se ocorrer um erro de final de arquivo ele para.
     except EOFError:
-        janela_login.after(100, animar_gif, 0)
+        pass
 #Fim da função animar_gif
 #Apesar da função animar_gif terminar, aqui ela é chamada para iniciar a animação do GIF no ponto 0
 janela_login.after(0, animar_gif, 0)
@@ -620,7 +620,7 @@ def animar_gif_rodape(ind):
         ind += 1
         janela_login.after(100, animar_gif_rodape, ind)
     except EOFError:
-        janela_login.after(100, animar_gif_rodape, 0)
+        pass
 #Fim da função animar_gif_rodape
 
 #Iniciar a animação do GIF do rodapé
