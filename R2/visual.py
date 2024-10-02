@@ -33,41 +33,69 @@ import dashboard
 
 #Função para verificar se o login está correto
 def verificar_login():
-    #Obter o usuário e a senha dos campos de entrada da janela de login
+    # Obter o usuário e a senha dos campos de entrada da janela de login
     usuario = entry_usuario.get()
     senha = entry_senha.get()
     
-    #Verifica a senha de forma criptografada usando o algoritmo SHA-256
+    # Verifica a senha de forma criptografada usando o algoritmo SHA-256
     senha_criptografada = hashlib.sha256(senha.encode()).hexdigest()
     
-    #Tenta conectar ao banco de dados e verificar se o usuário e a senha estão corretos
+    # Tenta conectar ao banco de dados e verificar se o usuário e a senha estão corretos
     try:
-        #Obtem o caminho do banco de dados nesse caso dentro da mesma pasta do arquivo e dentro do arquivo banco.db
+        # Obtem o caminho do banco de dados nesse caso dentro da mesma pasta do arquivo e dentro do arquivo banco.db
         caminho_banco_dados = os.path.join(os.path.dirname(__file__), 'banco.db')
-        #Cria uma variavel para armazenar a função de conexão com o banco de dados
+        # Cria uma variavel para armazenar a função de conexão com o banco de dados
         conn = sqlite3.connect(caminho_banco_dados)
-        #Cria uma variavel para armazenar o cursor do SQLite
+        # Cria uma variavel para armazenar o cursor do SQLite
         cursor = conn.cursor()
         
-        #Verifica se o usuário e a senha estão corretos
-        #Usa a variavel cursor para executar a query SQL buscando dentro da tabela usuarios o usuario e a senha criptografada
-        #Faz a busca com o comando SELECT * FROM usuarios WHERE usuario = ? AND senha = ?
-        #O argumento ? é inserido na query para evitar injeção de SQL e também indicar que os valores serão passados como parâmetros
+        # Verifica se o usuário e a senha estão corretos
+        # Usa a variavel cursor para executar a query SQL buscando dentro da tabela usuarios o usuario e a senha criptografada
+        # Faz a busca com o comando SELECT * FROM usuarios WHERE usuario = ? AND senha = ?
+        # O argumento ? é inserido na query para evitar injeção de SQL e também indicar que os valores serão passados como parâmetros
         cursor.execute("SELECT * FROM usuarios WHERE usuario = ? AND senha = ?", (usuario, senha_criptografada))
-        #A variavel resultado recebe o resultado da busca
+        # A variavel resultado recebe o resultado da busca
         resultado = cursor.fetchone()
         
-        #Se o resultado for verdadeiro, chama a função janela_principal 
+        # Se o resultado for verdadeiro, chama a função janela_principal 
         if resultado:
+            # Atualiza a coluna ultimo_login com a data e hora atual
+            data_hora_atual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("UPDATE usuarios SET ultimo_login = ? WHERE usuario = ?", (data_hora_atual, usuario))
+            conn.commit()
+            
+            # Verifica se o usuário é administrador
+            is_admin = resultado[6]  # Supondo que a coluna is_admin é a sétima coluna na tabela usuarios
+            
+            # Define variáveis globais para armazenar o estado do usuário logado
+            global usuario_logado, is_admin_logado, usuario_admin, usuario_comum
+            usuario_logado = usuario
+            is_admin_logado = is_admin
+            
+            # Sub verificação para definir variáveis específicas para administrador e usuário comum
+            if is_admin:
+                usuario_admin = usuario
+                usuario_comum = None
+            else:
+                usuario_comum = usuario
+                usuario_admin = None
+            
+            # Permite que as variáveis sejam usadas pelo programa todo
+            globals().update({
+                'usuario_logado': usuario_logado,
+                'is_admin_logado': is_admin_logado,
+                'usuario_admin': usuario_admin,
+                'usuario_comum': usuario_comum
+            })
             janela_principal()
-        #Se não, exibe uma mensagem de erro
+        # Se não, exibe uma mensagem de erro
         else:
             messagebox.showerror("Erro", "Usuário ou senha incorretos.")
         
-        #Fecha o cursor e a conexão com o banco de dados
-        #Somente o close() é necessário
+        # Fecha o cursor e a conexão com o banco de dados
+        # Somente o close() é necessário
         conn.close()
-    #Se ocorrer um erro ao conectar ao banco de dados, exibe uma mensagem de erro    
+    # Se ocorrer um erro ao conectar ao banco de dados, exibe uma mensagem de erro    
     except sqlite3.Error as e:
         messagebox.showerror("Erro", f"Erro ao conectar ao banco de dados: {e}")
     finally:
@@ -300,8 +328,155 @@ def janela_principal():
         btn_adicionar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Adicionar Usuários", command=adicionar_usuario)
         btn_adicionar_usuarios.pack(pady=10)
 
+        def editar_usuarios():
+            # Cria uma nova janela para editar usuários
+            janela_editar_usuarios = tk.Toplevel(janela_configuracoes_usuarios)
+            janela_editar_usuarios.title("Editar Usuários Existentes")
+            janela_editar_usuarios.geometry("600x400")
+
+            # Função para buscar as informações do usuário selecionado
+            def buscar_informacoes_usuario(event):
+                if not listbox_usuarios.curselection():
+                    messagebox.showerror("Erro", "Nenhum usuário selecionado.")
+                    return
+                usuario_selecionado = listbox_usuarios.get(listbox_usuarios.curselection())
+                try:
+                    with sqlite3.connect(caminho_banco_dados) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT * FROM usuarios WHERE usuario = ?", (usuario_selecionado,))
+                        usuario_info = cursor.fetchone()
+                        entry_usuario_editar.delete(0, tk.END)
+                        entry_usuario_editar.insert(0, usuario_info[0])
+                        entry_nome_completo_editar.delete(0, tk.END)
+                        entry_nome_completo_editar.insert(0, usuario_info[3])
+                        entry_email_editar.delete(0, tk.END)
+                        entry_email_editar.insert(0, usuario_info[4])
+                        is_admin_var_editar.set(usuario_info[5])
+                except sqlite3.Error as e:
+                    messagebox.showerror("Erro", f"Erro ao buscar informações do usuário: {e}")
+
+            # Frame para a lista de usuários com barra de rolagem
+            frame_lista_usuarios = tk.Frame(janela_editar_usuarios)
+            frame_lista_usuarios.pack(pady=10, fill=tk.BOTH, expand=True)
+
+            # Barra de rolagem vertical
+            scrollbar_vertical = tk.Scrollbar(frame_lista_usuarios, orient=tk.VERTICAL)
+            scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y)
+
+            # Lista de usuários
+            listbox_usuarios = tk.Listbox(frame_lista_usuarios, yscrollcommand=scrollbar_vertical.set, height=10)
+            listbox_usuarios.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            # Configura a barra de rolagem para a lista de usuários
+            scrollbar_vertical.config(command=listbox_usuarios.yview)
+
+            # Vincula o evento de seleção da lista de usuários
+            listbox_usuarios.bind('<<ListboxSelect>>', buscar_informacoes_usuario)
+
+            # Função para carregar os usuários na lista
+            try:
+                with sqlite3.connect(caminho_banco_dados) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT id, usuario, nome_completo, email, is_admin, ultimo_login FROM usuarios")
+                    usuarios = cursor.fetchall()
+                    listbox_usuarios.delete(0, tk.END)
+                    for usuario in usuarios:
+                        usuario_info = f"{usuario[0]} | {usuario[1]} | {usuario[2]} | {usuario[3]} | {'Admin' if usuario[4] else 'Comum'} | Último login: {usuario[5]}"
+                        listbox_usuarios.insert(tk.END, usuario_info)
+            except sqlite3.Error as e:
+                messagebox.showerror("Erro", f"Erro ao carregar usuários: {e}")
+
+            # Função para salvar as alterações do usuário
+            def salvar_alteracoes():
+                usuario = entry_usuario_editar.get()
+                nome_completo = entry_nome_completo_editar.get()
+                email = entry_email_editar.get()
+                is_admin = is_admin_var_editar.get()
+
+                # Verifica se todos os campos foram preenchidos
+                if not all([usuario, nome_completo, email]):
+                    messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
+                    return
+
+                # Atualiza as informações do usuário no banco de dados
+                try:
+                    with sqlite3.connect(caminho_banco_dados) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            UPDATE usuarios
+                            SET nome_completo = ?, email = ?, is_admin = ?
+                            WHERE usuario = ?
+                        """, (nome_completo, email, int(is_admin), usuario))
+                        conn.commit()
+                        messagebox.showinfo("Sucesso", "Informações do usuário atualizadas com sucesso.")
+                except sqlite3.Error as e:
+                    messagebox.showerror("Erro", f"Erro ao atualizar informações do usuário: {e}")
+
+            # Verifica se o usuário logado é administrador e armazena a informação de quem logou
+            try:
+                cursor = conn.cursor()
+                cursor.execute("SELECT is_admin FROM usuarios WHERE usuario = ?", (usuario_logado,))
+                usuario_info = cursor.fetchone()
+                if usuario_info:
+                    is_admin_logado = usuario_info[0]
+                    usuario_admin = usuario_logado if is_admin_logado else None
+                    usuario_comum = usuario_logado if not is_admin_logado else None
+                else:
+                    is_admin_logado = 0
+                    usuario_admin = None
+                    usuario_comum = None
+            except sqlite3.Error as e:
+                messagebox.showerror("Erro", f"Erro ao verificar permissões do usuário: {e}")
+                return
+
+            globals().update({
+                'usuario_logado': usuario_logado,
+                'is_admin_logado': is_admin_logado,
+                'usuario_admin': usuario_admin,
+                'usuario_comum': usuario_comum
+            })
+
+            # Campos de entrada para editar as informações do usuário
+            tk.Label(janela_editar_usuarios, text="Usuário:").pack(pady=5)
+            entry_usuario_editar = tk.Entry(janela_editar_usuarios)
+            entry_usuario_editar.pack(pady=5)
+
+            tk.Label(janela_editar_usuarios, text="Nome Completo:").pack(pady=5)
+            entry_nome_completo_editar = tk.Entry(janela_editar_usuarios)
+            entry_nome_completo_editar.pack(pady=5)
+
+            tk.Label(janela_editar_usuarios, text="Email:").pack(pady=5)
+            entry_email_editar = tk.Entry(janela_editar_usuarios)
+            entry_email_editar.pack(pady=5)
+
+            # Variável para armazenar o estado da caixa de seleção
+            is_admin_var_editar = tk.IntVar()
+
+            # Label para a opção de administrador
+            label_pergunta_admin_editar = tk.Label(janela_editar_usuarios, text="Administrador:")
+            label_pergunta_admin_editar.pack(pady=5)
+
+            # Caixa de seleção para definir se o usuário é administrador
+            check_is_admin_editar = tk.Checkbutton(janela_editar_usuarios, variable=is_admin_var_editar)
+            check_is_admin_editar.pack(pady=5)
+
+            # Botão para salvar as alterações
+            btn_salvar_alteracoes = tk.Button(janela_editar_usuarios, text="Salvar Alterações", command=salvar_alteracoes)
+            btn_salvar_alteracoes.pack(pady=20)
+
+            # Carrega os usuários na lista
+            carregar_usuarios()
+
+            # Desabilita a edição se o usuário logado não for administrador
+            if not is_admin_logado:
+                entry_usuario_editar.config(state='disabled')
+                entry_nome_completo_editar.config(state='disabled')
+                entry_email_editar.config(state='disabled')
+                check_is_admin_editar.config(state='disabled')
+                btn_salvar_alteracoes.config(state='disabled')
+
         # Botão para editar usuários existentes
-        btn_editar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Editar Usuários Existentes")
+        btn_editar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Editar Usuários Existentes", command=editar_usuarios)
         btn_editar_usuarios.pack(pady=10)
 
         # Botão para visualizar alterações

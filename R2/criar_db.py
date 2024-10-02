@@ -42,7 +42,8 @@ def criar_tabelas(conn):
                     data_criacao TEXT NOT NULL,
                     nome_completo TEXT NOT NULL,
                     email TEXT NOT NULL,
-                    is_admin INTEGER NOT NULL DEFAULT 0
+                    is_admin INTEGER NOT NULL DEFAULT 0,
+                    ultimo_login TEXT
                 )
             ''')
             #Fim da criação da tabela de usuários
