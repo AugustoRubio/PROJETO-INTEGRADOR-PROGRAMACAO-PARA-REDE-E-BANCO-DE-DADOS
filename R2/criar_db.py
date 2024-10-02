@@ -33,7 +33,7 @@ def criar_tabelas(conn):
             
             #Chamamos o método execute do cursor para criar a tabela de usuários
             #Caso a tabela usuarios já exista, ela não será criada novamente
-            #Table de usuários: id (chave primária), usuario (texto não nulo e único), senha (texto não nulo), data_criacao (texto não nulo), nome_completo (texto não nulo), email (texto não nulo) e is_admin (inteiro não nulo com valor padrão 0)
+            #Table de usuários: id (chave primária), usuario (texto não nulo e único), senha (texto não nulo), data_criacao (texto não nulo), nome_completo (texto não nulo), email (texto não nulo), is_admin (inteiro não nulo com valor padrão 0) e ultimo_login (texto)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,

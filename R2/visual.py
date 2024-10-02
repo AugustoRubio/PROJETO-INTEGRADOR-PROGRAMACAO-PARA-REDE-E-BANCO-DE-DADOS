@@ -33,14 +33,14 @@ import dashboard
 
 #Função para verificar se o login está correto
 def verificar_login():
-    # Obter o usuário e a senha dos campos de entrada da janela de login
+    #Obter o usuário e a senha dos campos de entrada da janela de login
     usuario = entry_usuario.get()
     senha = entry_senha.get()
     
-    # Verifica a senha de forma criptografada usando o algoritmo SHA-256
+    #Verifica a senha de forma criptografada usando o algoritmo SHA-256
     senha_criptografada = hashlib.sha256(senha.encode()).hexdigest()
     
-    # Tenta conectar ao banco de dados e verificar se o usuário e a senha estão corretos
+    #Tenta conectar ao banco de dados e verificar se o usuário e a senha estão corretos e se o usuário é administrador
     try:
         # Obtem o caminho do banco de dados nesse caso dentro da mesma pasta do arquivo e dentro do arquivo banco.db
         caminho_banco_dados = os.path.join(os.path.dirname(__file__), 'banco.db')
@@ -65,14 +65,16 @@ def verificar_login():
             conn.commit()
             
             # Verifica se o usuário é administrador
-            is_admin = resultado[6]  # Supondo que a coluna is_admin é a sétima coluna na tabela usuarios
+            is_admin = resultado[6]  # A sétima coluna (índice 6) indica se o usuário é administrador
             
-            # Define variáveis globais para armazenar o estado do usuário logado
+            #Define variáveis globais para armazenar o estado do usuário logado
+            #Somente as variáveis globais podem ser usadas em todo o programa
+            #As variaveis são: usuario_logado, is_admin_logado, usuario_admin, usuario_comum
             global usuario_logado, is_admin_logado, usuario_admin, usuario_comum
             usuario_logado = usuario
             is_admin_logado = is_admin
             
-            # Sub verificação para definir variáveis específicas para administrador e usuário comum
+            #Sub verificação para definir variáveis específicas para administrador e usuário comum
             if is_admin:
                 usuario_admin = usuario
                 usuario_comum = None
@@ -80,14 +82,17 @@ def verificar_login():
                 usuario_comum = usuario
                 usuario_admin = None
             
-            # Permite que as variáveis sejam usadas pelo programa todo
+            #Por algum motivo o código não está funcionando, então foi adicionado o comando globals().update para atualizar as variáveis
+            #Permite que as variáveis sejam usadas pelo programa todo de novo.
             globals().update({
                 'usuario_logado': usuario_logado,
                 'is_admin_logado': is_admin_logado,
                 'usuario_admin': usuario_admin,
                 'usuario_comum': usuario_comum
             })
+            #Imprime uma mensagem de login correto
             print("Login correto")
+            #Chama a função janela_principal
             janela_principal()
         # Se não, exibe uma mensagem de erro
         else:
@@ -239,6 +244,7 @@ def janela_principal():
     btn_funcoes_scanner = tk.Button(janela_principal, text="FUNÇÕES DE SCANNER DE REDE", command=abrir_janela_escanear)
     btn_funcoes_scanner.pack(pady=10)
 
+    #Inicio da função de configuracoes de usuarios
     # Função para abrir a janela de configurações de usuários
     def abrir_configuracoes_usuarios():
         # Cria uma nova janela para as configurações de usuários
@@ -246,52 +252,56 @@ def janela_principal():
         janela_configuracoes_usuarios.title("Configurações de Usuários")
         janela_configuracoes_usuarios.geometry("400x300")
 
+        #Inicio da função de adicionar usuario
         def adicionar_usuario():
             # Cria uma nova janela para adicionar usuários
             janela_adicionar_usuario = tk.Toplevel(janela_configuracoes_usuarios)
             janela_adicionar_usuario.title("Adicionar Usuário")
             janela_adicionar_usuario.geometry("400x400")
 
-            # Labels e campos de entrada para os dados do usuário
+            #Labels e campos de entrada para os dados do usuário
             tk.Label(janela_adicionar_usuario, text="Usuário:").pack(pady=5)
             entry_novo_usuario = tk.Entry(janela_adicionar_usuario)
             entry_novo_usuario.pack(pady=5)
-
+            #Campo de entrada para a senha do usuário
             tk.Label(janela_adicionar_usuario, text="Senha:").pack(pady=5)
             entry_nova_senha = tk.Entry(janela_adicionar_usuario, show="*")
             entry_nova_senha.pack(pady=5)
-
+            #Campo de entrada para o nome completo do usuário
             tk.Label(janela_adicionar_usuario, text="Nome Completo:").pack(pady=5)
             entry_nome_completo = tk.Entry(janela_adicionar_usuario)
             entry_nome_completo.pack(pady=5)
-
+            #Campo de entrada para o email do usuário
             tk.Label(janela_adicionar_usuario, text="Email:").pack(pady=5)
             entry_email = tk.Entry(janela_adicionar_usuario)
             entry_email.pack(pady=5)
 
-            # Label para a opção de administrador
+            #Label para a opção de administrador
             label_pergunta_admin = tk.Label(janela_adicionar_usuario, text="Precisa ser administrador ?")
             label_pergunta_admin.pack(pady=5)
 
-            # Variável para armazenar o estado da caixa de seleção
+            #Variável para armazenar o estado da caixa de seleção
             is_admin_var = tk.IntVar()
 
-            # Função para atualizar o texto ao lado da caixa de seleção
+            #Função para atualizar o texto ao lado da caixa de seleção
+            #Se a caixa de seleção for marcada, o texto será "Será administrador"
+            #Se a caixa de seleção não for marcada, o texto será "Não será administrador"
             def atualizar_texto_admin():
                 if is_admin_var.get() == 1:
                     label_admin_status.config(text="Será administrador")
                 else:
                     label_admin_status.config(text="Não será administrador")
 
-            # Label para mostrar o status da seleção
+            #Label para mostrar o status da seleção
             label_admin_status = tk.Label(janela_adicionar_usuario, text="Não será administrador")
             label_admin_status.pack(pady=5)
 
-            # Caixa de seleção para definir se o usuário é administrador
+            #Caixa de seleção para definir se o usuário é administrador
             check_is_admin = tk.Checkbutton(janela_adicionar_usuario, variable=is_admin_var, command=atualizar_texto_admin)
             check_is_admin.pack(pady=5)
 
-            # Função para salvar o novo usuário no banco de dados
+            #Função para salvar o novo usuário no banco de dados
+            #Captura os dados dos campos de entrada e insere no banco de dados
             def salvar_usuario():
                 usuario = entry_novo_usuario.get()
                 senha = entry_nova_senha.get()
@@ -299,19 +309,21 @@ def janela_principal():
                 email = entry_email.get()
                 is_admin = is_admin_var.get()
 
-                # Verifica se todos os campos foram preenchidos
+                #Verifica se todos os campos foram preenchidos
                 if not all([usuario, senha, nome_completo, email]):
                     messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
                     return
 
-                # Criptografa a senha
+                #Criptografa a senha e obtém a data e hora atuais para salvar no banco de dados
                 senha_criptografada = hashlib.sha256(senha.encode()).hexdigest()
                 data_criacao = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # Insere o novo usuário no banco de dados
+                #Insere o novo usuário no banco de dados
                 try:
                     with sqlite3.connect(caminho_banco_dados) as conn:
                         cursor = conn.cursor()
+                        #Aqui é feita a inserção dos dados do novo usuário na tabela usuarios
+                        #Os dados inseridos são: usuario, senha, data_criacao, nome_completo, email e is_admin
                         cursor.execute("""
                             INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin)
                             VALUES (?, ?, ?, ?, ?, ?)
@@ -322,31 +334,40 @@ def janela_principal():
                 except sqlite3.Error as e:
                     messagebox.showerror("Erro", f"Erro ao adicionar usuário: {e}")
 
-            # Botão para salvar o novo usuário
+            #Botão para salvar o novo usuário
             btn_salvar_usuario = tk.Button(janela_adicionar_usuario, text="Salvar Usuário", command=salvar_usuario)
             btn_salvar_usuario.pack(pady=20)
+        #Fim da função de adicionar usuario
 
-        # Botão para adicionar usuários
+        #Botão para adicionar usuários
         btn_adicionar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Adicionar Usuários", command=adicionar_usuario)
         btn_adicionar_usuarios.pack(pady=10)
 
+        #Inicio da função de editar usuarios
+        #Função para editar usuários existentes
         def editar_usuarios():
-            # Cria uma nova janela para editar usuários
             janela_editar_usuarios = tk.Toplevel(janela_configuracoes_usuarios)
             janela_editar_usuarios.title("Editar Usuários Existentes")
             janela_editar_usuarios.geometry("600x400")
 
-            # Função para buscar as informações do usuário selecionado
+            #Função para buscar as informações do usuário selecionado
             def buscar_informacoes_usuario(event=None):
+                #A variavel de usuario não selecionado é usada para verificar se o usuario foi selecionado, mas precisa ser chamada antes.
                 if not listbox_usuarios.curselection():
                     messagebox.showerror("Erro", "Nenhum usuário selecionado.")
                     return
+                #A variavel usuario_selecionado é usada para armazenar o usuario selecionado na lista de usuarios
+                #A função split é usada para separar o texto da lista de usuarios e pegar somente o usuario usando o indice [1]
                 usuario_selecionado = listbox_usuarios.get(listbox_usuarios.curselection()).split(" | ")[1]
+                #Tenta conectar ao banco de dados e buscar as informações do usuário selecionado
                 try:
                     with sqlite3.connect(caminho_banco_dados) as conn:
                         cursor = conn.cursor()
                         cursor.execute("SELECT usuario, nome_completo, email, is_admin FROM usuarios WHERE usuario = ?", (usuario_selecionado,))
                         usuario_info = cursor.fetchone()
+                        #Se o usuario for encontrado, preenche os campos de entrada com as informações do usuario
+                        #Se o usuario não for encontrado, exibe uma mensagem de erro
+                        #Os campos de entrada são: entry_usuario_editar, entry_nome_completo_editar, entry_email_editar e is_admin_var_editar
                         if usuario_info:
                             entry_usuario_editar.delete(0, tk.END)
                             entry_usuario_editar.insert(0, usuario_info[0])
@@ -357,59 +378,68 @@ def janela_principal():
                             is_admin_var_editar.set(usuario_info[3])
                         else:
                             messagebox.showerror("Erro", "Usuário não encontrado.")
+                #Se ocorrer um erro ao buscar as informações do usuário, exibe uma mensagem de erro
                 except sqlite3.Error as e:
                     messagebox.showerror("Erro", f"Erro ao buscar informações do usuário: {e}")
-
-            # Frame para a lista de usuários com barra de rolagem
+        #Fim da função de editar usuarios
+            #Implementa uma barra de rolagem para a lista de usuários
+            #Frame para a lista de usuários com barra de rolagem
             frame_lista_usuarios = tk.Frame(janela_editar_usuarios)
             frame_lista_usuarios.pack(pady=10, fill=tk.BOTH, expand=True)
-
-            # Barra de rolagem vertical
+            
+            #Barra de rolagem vertical
             scrollbar_vertical = tk.Scrollbar(frame_lista_usuarios, orient=tk.VERTICAL)
             scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y)
 
-            # Lista de usuários
+            #Coloca a lista de usuários dentro do frame da lista de usuários
             listbox_usuarios = tk.Listbox(frame_lista_usuarios, yscrollcommand=scrollbar_vertical.set, height=10)
             listbox_usuarios.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-            # Configura a barra de rolagem para a lista de usuários
+            #Configura a barra de rolagem para a lista de usuários
             scrollbar_vertical.config(command=listbox_usuarios.yview)
 
-            # Vincula o evento de seleção da lista de usuários
+            #Vincula o evento de seleção da lista de usuários
             listbox_usuarios.bind('<<ListboxSelect>>', buscar_informacoes_usuario)
 
-            # Função para carregar os usuários na lista
+            #Inicio da função de carregar usuarios
+            #Função para carregar os usuários na lista
             def carregar_usuarios():
                 try:
                     with sqlite3.connect(caminho_banco_dados) as conn:
                         cursor = conn.cursor()
+                        #Seleciona todos os parâmetros da tabela usuarios
                         cursor.execute("SELECT id, usuario, nome_completo, email, is_admin, ultimo_login FROM usuarios")
                         usuarios = cursor.fetchall()
                         listbox_usuarios.delete(0, tk.END)
+                        #Para cada parametro buscado usando um indice com loop for, insere juntamente das informações da tabela de dados, informações extras
                         for usuario in usuarios:
                             usuario_info = f"{usuario[0]} | {usuario[1]} | {usuario[2]} | {usuario[3]} | {'Admin' if usuario[4] else 'Comum'} | Último login: {usuario[5]}"
                             listbox_usuarios.insert(tk.END, usuario_info)
                 except sqlite3.Error as e:
                     messagebox.showerror("Erro", f"Erro ao carregar usuários: {e}")
+            #Fim da função de carregar usuarios
 
-            # Função para salvar as alterações do usuário
+            #Inicio da função de salvar alterações
+            #Função para salvar as alterações do usuário
+            #Captura os dados dos campos de entrada e atualiza no banco de dados
             def salvar_alteracoes():
                 usuario = entry_usuario_editar.get()
                 nome_completo = entry_nome_completo_editar.get()
                 email = entry_email_editar.get()
                 is_admin = is_admin_var_editar.get()
 
-                # Verifica se todos os campos foram preenchidos
+                #Verifica se todos os campos foram preenchidos
                 if not all([usuario, nome_completo, email]):
                     messagebox.showerror("Erro", "Todos os campos devem ser preenchidos.")
                     return
 
-                 # Verifica se houve alterações nos campos do usuário
+                #Verifica se houve alterações nos campos do usuário
+                #Se houver alterações, atualiza as informações do usuário no banco de dados
                 with sqlite3.connect(caminho_banco_dados) as conn:
                     cursor = conn.cursor()
                     cursor.execute("SELECT nome_completo, email, is_admin FROM usuarios WHERE usuario = ?", (usuario,))
                     usuario_atual = cursor.fetchone()
-                             
+                    #Verifica se os dados são consistentes
                     if usuario_atual:
                         nome_completo_atual, email_atual, is_admin_atual = usuario_atual
                             
@@ -423,13 +453,15 @@ def janela_principal():
                                 """, (nome_completo, email, int(is_admin), usuario))
                                 conn.commit()
                                 messagebox.showinfo("Sucesso", "Informações do usuário atualizadas com sucesso.")
-                                carregar_usuarios()  # Recarrega a lista de usuários para refletir as alterações
+                                #Recarrega a lista de usuários para refletir as alterações
+                                carregar_usuarios()
                             except sqlite3.Error as e:
                                 messagebox.showerror("Erro", f"Erro ao atualizar informações do usuário: {e}")
                         else:
                             messagebox.showinfo("Informação", "Nenhuma alteração detectada.")
                     else:
                         messagebox.showerror("Erro", "Usuário não encontrado.")
+                #Fim da função de salvar alterações
 
             tk.Label(janela_editar_usuarios, text="Usuário:").pack(pady=5)
             entry_usuario_editar = tk.Entry(janela_editar_usuarios)
@@ -461,7 +493,8 @@ def janela_principal():
             # Carrega os usuários na lista
             carregar_usuarios()
 
-            # Desabilita a edição se o usuário logado não for administrador
+            #Verifica se o usuário logado é administrador
+            #Desabilita a edição se o usuário logado não for administrador
             if not is_admin_logado:
                 entry_usuario_editar.config(state='disabled')
                 entry_nome_completo_editar.config(state='disabled')
@@ -469,17 +502,19 @@ def janela_principal():
                 check_is_admin_editar.config(state='disabled')
                 btn_salvar_alteracoes.config(state='disabled')
 
-        # Botão para editar usuários existentes
+        #Botão para editar usuários existentes
         btn_editar_usuarios = tk.Button(janela_configuracoes_usuarios, text="Editar Usuários Existentes", command=editar_usuarios)
         btn_editar_usuarios.pack(pady=10)
 
-        # Botão para visualizar alterações
+        #Botão para visualizar alterações
         btn_visualizar_alteracoes = tk.Button(janela_configuracoes_usuarios, text="Visualizar Alterações")
         btn_visualizar_alteracoes.pack(pady=10)
 
-        # Botão para voltar ao menu principal
+        # otão para voltar ao menu principal
         btn_voltar_menu_principal = tk.Button(janela_configuracoes_usuarios, text="Voltar ao Menu Principal", command=janela_configuracoes_usuarios.destroy)
         btn_voltar_menu_principal.pack(pady=10)
+    #Fim da função de configuracoes de usuarios
+    
     # Botão para abrir a janela de configurações de usuários
     btn_configuracoes_usuarios = tk.Button(janela_principal, text="CONFIGURAÇÕES DE USUÁRIOS", command=abrir_configuracoes_usuarios)
     btn_configuracoes_usuarios.pack(pady=10)
