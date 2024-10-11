@@ -81,13 +81,18 @@ def criar_tabelas(conn):
             ''')
             #Fim da criação da tabela de config_programa
 
-            #Insere uma configuração padrão na tabela config_programa
-            #Nessa configuração padrão, definimos o logo principal, logo do rodapé, fonte principal e tamanho da fonte
+            # Verifica se o diretório "apoio" existe, caso contrário, cria o diretório
+            apoio_dir = os.path.join(script_dir, "apoio")
+            if not os.path.exists(apoio_dir):
+                os.makedirs(apoio_dir)
+            
+            # Insere uma configuração padrão na tabela config_programa
+            # Nessa configuração padrão, definimos o logo principal, logo do rodapé, fonte principal e tamanho da fonte
             cursor.execute('''
                 INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte) VALUES (datetime('now'), ?, ?, ?, ?)
             ''', (
-                os.path.join(script_dir, "apoio", "logo_principal.gif"),
-                os.path.join(script_dir, "apoio", "logo_rodape.gif"),
+                os.path.join(apoio_dir, "logo_principal.gif"),
+                os.path.join(apoio_dir, "logo_rodape.gif"),
                 "Terminal",
                 18,  # Tamanho da fonte padrão
             ))
