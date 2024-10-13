@@ -91,9 +91,9 @@ def criar_tabelas(conn):
             cursor.execute('''
                 INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte) VALUES (datetime('now'), ?, ?, ?, ?)
             ''', (
-                os.path.join(apoio_dir, "logo_principal.gif"),
-                os.path.join(apoio_dir, "logo_rodape.gif"),
-                "Terminal",
+                os.path.join(apoio_dir, "LOGO_R3.png"),
+                os.path.join(apoio_dir, "LOGO_R6.png"),
+                "Arial",  # Fonte compatível com PyQt
                 18,  # Tamanho da fonte padrão
             ))
             print("Configuração padrão inserida com sucesso.")
