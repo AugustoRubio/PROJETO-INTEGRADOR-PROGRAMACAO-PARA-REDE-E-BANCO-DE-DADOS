@@ -56,7 +56,7 @@ class ScannerRede:
                     cursor.execute('''
                         INSERT INTO scanner (data, hostname, mac_address, ip, portas)
                         VALUES (?, ?, ?, ?, ?)
-                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
+                    ''', (datetime.now().strftime('%d/%m/%Y %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
                 conn.commit()
 
             self.escaneamento_concluido = True  # Marca o escaneamento como concluído
