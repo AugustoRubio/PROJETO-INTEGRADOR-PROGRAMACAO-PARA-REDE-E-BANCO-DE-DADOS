@@ -138,9 +138,25 @@ class JanelaLogin(QWidget):
             QMessageBox.warning(self, 'Erro', 'Usuário não encontrado.')
 
     def abrir_janela_principal(self):
-        self.janela_principal = JanelaPrincipal()
-        self.janela_principal.show()
-        self.hide()  # Hide the login window after successful login
+        usuario_logado = self.obter_usuario_logado()
+        if usuario_logado:
+            self.janela_principal = JanelaPrincipal(usuario_logado)
+            self.janela_principal.show()
+            self.hide()  # Hide the login window after successful login
+        else:
+            self.mostrar_erro('Erro ao obter informações do usuário logado.')
+
+    def obter_usuario_logado(self):
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = ?', (self.input_usuario.text(),))
+                resultado = cursor.fetchone()
+                if resultado:
+                    return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao obter usuário logado: {e}")
+        return None
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
@@ -148,8 +164,9 @@ class JanelaLogin(QWidget):
 
 #Começo da classe JanelaPrincipal
 class JanelaPrincipal(QWidget):
-    def __init__(self):
+    def __init__(self, usuario_logado):
         super().__init__()
+        self.usuario_logado = usuario_logado
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -159,6 +176,11 @@ class JanelaPrincipal(QWidget):
 
         layout = QVBoxLayout()
 
+        # Adicionar informações do usuário logado no canto superior esquerdo da janela
+        self.label_usuario_logado = QLabel(f"Usuário: {self.usuario_logado['usuario']} ({'Admin' if self.usuario_logado['is_admin'] else 'Comum'})", self)
+        self.label_usuario_logado.setAlignment(Qt.AlignLeft)
+        layout.addWidget(self.label_usuario_logado, alignment=Qt.AlignLeft)
+
         self.botao_dashboard = QPushButton('DASHBOARD', self)
         layout.addWidget(self.botao_dashboard)
 
@@ -167,6 +189,7 @@ class JanelaPrincipal(QWidget):
         layout.addWidget(self.botao_scanner_rede)
 
         self.botao_config_usuarios = QPushButton('Configurações de usuários', self)
+        self.botao_config_usuarios.clicked.connect(self.JanelaConfigUsuarios)
         layout.addWidget(self.botao_config_usuarios)
 
         self.botao_config_programa = QPushButton('Configuração do programa', self)
@@ -202,6 +225,11 @@ class JanelaPrincipal(QWidget):
         self.janela_scanner_rede = JanelaScannerRede()
         self.janela_scanner_rede.show()
         self.hide()  # Use hide() instead of close() to prevent triggering closeEvent
+
+    def JanelaConfigUsuarios(self):
+        self.janela_config_usuarios = JanelaConfigUsuarios()
+        self.janela_config_usuarios.show()
+        self.hide()
 #Fim da classe JanelaPrincipal
 
 #Começo da classe JanelaScannerRede
@@ -210,11 +238,12 @@ class JanelaScannerRede(QWidget):
         super().__init__()
         self.inicializarUI()
 
-    def inicializarUI(self):
+        self.janela_principal = JanelaPrincipal(self.usuario_logado)
         self.setWindowTitle('Scanner de Rede')
         self.setGeometry(100, 100, 400, 300)
         self.center()
-
+    def closeEvent(self, event):
+        event.accept()
         layout = QVBoxLayout()
 
         self.botao_escanear_rede = QPushButton('Escanear a própria rede', self)
@@ -450,6 +479,191 @@ class JanelaVerInformacoes(QWidget):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
 #Fim da classe JanelaVerInformacoes
+
+# Inicio da classe JanelaConfigUsuarios
+class JanelaConfigUsuarios(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.inicializarUI()
+
+    def inicializarUI(self):
+        self.setWindowTitle('Configurações de Usuários')
+        self.setGeometry(100, 100, 600, 400)
+        self.center()
+
+        layout = QVBoxLayout()
+
+        self.label_instrucoes = QLabel('Gerencie os usuários do sistema:', self)
+        layout.addWidget(self.label_instrucoes, alignment=Qt.AlignTop)
+
+        self.botao_adicionar_usuario = QPushButton('Adicionar Usuário', self)
+        self.botao_adicionar_usuario.clicked.connect(self.adicionar_usuario)
+        layout.addWidget(self.botao_adicionar_usuario, alignment=Qt.AlignTop)
+
+        self.botao_remover_usuario = QPushButton('Remover Usuário', self)
+        self.botao_remover_usuario.clicked.connect(self.remover_usuario)
+        layout.addWidget(self.botao_remover_usuario, alignment=Qt.AlignTop)
+
+        self.botao_editar_usuario = QPushButton('Editar Usuário', self)
+        self.botao_editar_usuario.clicked.connect(self.editar_usuario)
+        layout.addWidget(self.botao_editar_usuario, alignment=Qt.AlignTop)
+
+        self.setLayout(layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def adicionar_usuario(self):
+        # Implementar lógica para adicionar usuário
+        QMessageBox.information(self, 'Adicionar Usuário', 'Funcionalidade de adicionar usuário ainda não implementada.')
+
+    def remover_usuario(self):
+        # Implementar lógica para remover usuário
+        QMessageBox.information(self, 'Remover Usuário', 'Funcionalidade de remover usuário ainda não implementada.')
+
+    def editar_usuario(self):
+        usuario_logado = self.obter_usuario_logado()
+        if not usuario_logado:
+            self.mostrar_erro('Erro ao obter informações do usuário logado.')
+            return
+
+        if usuario_logado['is_admin']:
+            self.editar_usuario_admin(usuario_logado)
+        else:
+            self.ver_informacoes_usuario(usuario_logado)
+
+    def obter_usuario_logado(self):
+        # Implementar lógica para obter o usuário logado
+        # Esta função deve retornar um dicionário com as informações do usuário logado
+        # Exemplo: {'id': 1, 'usuario': 'admin', 'is_admin': 1}
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = ?', (self.usuario_logado,))
+                resultado = cursor.fetchone()
+                if resultado:
+                    return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao obter usuário logado: {e}")
+        return None
+
+    def editar_usuario_admin(self, usuario_logado):
+        # Implementar lógica para editar informações de outros usuários
+        # Excluir a possibilidade de editar as próprias informações e IDs
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios WHERE id != ?', (usuario_logado['id'],))
+                usuarios = cursor.fetchall()
+
+            if not usuarios:
+                self.mostrar_erro("Nenhum outro usuário encontrado.")
+                return
+
+            self.janela_editar_usuario = QWidget()
+            self.janela_editar_usuario.setWindowTitle('Editar Usuário')
+            self.janela_editar_usuario.setGeometry(100, 100, 600, 400)
+            layout = QVBoxLayout()
+
+            for usuario in usuarios:
+                label_usuario = QLabel(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
+                layout.addWidget(label_usuario)
+
+                botao_editar = QPushButton('Editar', self.janela_editar_usuario)
+                botao_editar.clicked.connect(lambda _, u=usuario: self.abrir_janela_edicao(u))
+                layout.addWidget(botao_editar)
+
+            botao_fechar = QPushButton('Fechar', self.janela_editar_usuario)
+            botao_fechar.clicked.connect(self.janela_editar_usuario.close)
+            layout.addWidget(botao_fechar)
+
+            self.janela_editar_usuario.setLayout(layout)
+            self.janela_editar_usuario.show()
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao buscar usuários: {e}")
+
+    def abrir_janela_edicao(self, usuario):
+        self.janela_edicao = QWidget()
+        self.janela_edicao.setWindowTitle('Editar Informações do Usuário')
+        self.janela_edicao.setGeometry(100, 100, 400, 300)
+        layout = QVBoxLayout()
+
+        self.input_nome_completo = QLineEdit(self.janela_edicao)
+        self.input_nome_completo.setText(usuario[2])
+        layout.addWidget(QLabel('Nome Completo:'))
+        layout.addWidget(self.input_nome_completo)
+
+        self.input_email = QLineEdit(self.janela_edicao)
+        self.input_email.setText(usuario[3])
+        layout.addWidget(QLabel('Email:'))
+        layout.addWidget(self.input_email)
+
+        self.checkbox_is_admin = QCheckBox('Administrador', self.janela_edicao)
+        self.checkbox_is_admin.setChecked(usuario[4])
+        layout.addWidget(self.checkbox_is_admin)
+
+        botao_salvar = QPushButton('Salvar', self.janela_edicao)
+        botao_salvar.clicked.connect(lambda: self.salvar_edicao_usuario(usuario[0]))
+        layout.addWidget(botao_salvar)
+
+        botao_cancelar = QPushButton('Cancelar', self.janela_edicao)
+        botao_cancelar.clicked.connect(self.janela_edicao.close)
+        layout.addWidget(botao_cancelar)
+
+        self.janela_edicao.setLayout(layout)
+        self.janela_edicao.show()
+
+    def salvar_edicao_usuario(self, usuario_id):
+        nome_completo = self.input_nome_completo.text()
+        email = self.input_email.text()
+        is_admin = 1 if self.checkbox_is_admin.isChecked() else 0
+
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('UPDATE usuarios SET nome_completo = ?, email = ?, is_admin = ? WHERE id = ?', (nome_completo, email, is_admin, usuario_id))
+                conexao.commit()
+            QMessageBox.information(self, 'Sucesso', 'Informações do usuário atualizadas com sucesso.')
+            self.janela_edicao.close()
+            self.janela_editar_usuario.close()
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao salvar informações do usuário: {e}")
+
+    def ver_informacoes_usuario(self, usuario_logado):
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios WHERE id = ?', (usuario_logado['id'],))
+                usuario = cursor.fetchone()
+
+            if not usuario:
+                self.mostrar_erro("Usuário não encontrado.")
+                return
+
+            self.janela_ver_usuario = QWidget()
+            self.janela_ver_usuario.setWindowTitle('Informações do Usuário')
+            self.janela_ver_usuario.setGeometry(100, 100, 400, 300)
+            layout = QVBoxLayout()
+
+            label_usuario = QLabel(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
+            layout.addWidget(label_usuario)
+
+            botao_fechar = QPushButton('Fechar', self.janela_ver_usuario)
+            botao_fechar.clicked.connect(self.janela_ver_usuario.close)
+            layout.addWidget(botao_fechar)
+
+            self.janela_ver_usuario.setLayout(layout)
+            self.janela_ver_usuario.show()
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao buscar informações do usuário: {e}")
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
+# Fim da classe JanelaConfigUsuarios
 
 if __name__ == '__main__':
     try:
