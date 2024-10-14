@@ -15,6 +15,7 @@ except ImportError:
             return "Dummy Network"
 
 from PyQt5.QtWidgets import QCalendarWidget
+from datetime import datetime
 
 # Define the ScannerRede class
 class ScannerRede:
@@ -368,28 +369,34 @@ class JanelaOpcoesScanner(QWidget):
         self.show()
 #Fim da classe JanelaOpcoesScanner
 
-#Inicio da classe ver informações armazenadas
+#Inicio da classe JanelaVerInformacoes
 class JanelaVerInformacoes(QWidget):
     def __init__(self):
         super().__init__()
         self.inicializarUI()
 
     def inicializarUI(self):
-        self.setWindowTitle('Ver Informações Armazenadas')
-        self.setGeometry(100, 100, 400, 300)
+        self.setWindowTitle('Informações Armazenadas')
+        self.setGeometry(100, 100, 600, 400)
         self.center()
 
         layout = QVBoxLayout()
 
-        self.label_data = QLabel('Selecione a data:', self)
-        layout.addWidget(self.label_data)
+        self.label_instrucoes = QLabel('Selecione a data no calendário:', self)
+        layout.addWidget(self.label_instrucoes)
 
         self.calendario = QCalendarWidget(self)
-        self.calendario.setSelectedDate(self.calendario.selectedDate())
+        self.calendario.setSelectedDate(datetime.now().date())
+        self.calendario.clicked.connect(self.atualizar_data_selecionada)
         layout.addWidget(self.calendario)
 
-        self.botao_ver_informacoes = QPushButton('Ver Informações', self)
-        self.botao_ver_informacoes.clicked.connect(self.ver_informacoes)
+        self.input_data = QLineEdit(self)
+        self.input_data.setText(self.calendario.selectedDate().toString('dd/MM/yyyy'))
+        self.input_data.setReadOnly(True)
+        layout.addWidget(self.input_data)
+
+        self.botao_ver_informacoes = QPushButton('Ver Informações Armazenadas', self)
+        self.botao_ver_informacoes.clicked.connect(self.ver_informacoes_armazenadas)
         layout.addWidget(self.botao_ver_informacoes)
 
         self.setLayout(layout)
@@ -400,51 +407,50 @@ class JanelaVerInformacoes(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def ver_informacoes(self):
-        data = self.calendario.selectedDate().toString("dd/MM/yyyy")
-        if not data:
-            QMessageBox.warning(self, 'Erro', 'Por favor, selecione uma data.')
-            return
+    def atualizar_data_selecionada(self):
+        data_selecionada = self.calendario.selectedDate().toString('dd/MM/yyyy')
+        self.input_data.setText(data_selecionada)
+
+    def ver_informacoes_armazenadas(self):
+        data_selecionada = self.input_data.text()
 
         try:
-            caminho_db = os.path.join(os.path.dirname(__file__), 'banco.db')
-            with sqlite3.connect(caminho_db) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT * FROM scanner WHERE data = ?', (data,))
-                dados = cursor.fetchall()
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT * FROM scanner WHERE data LIKE ?', (f'%{data_selecionada}%',))
+                resultados = cursor.fetchall()
 
-            if not dados:
-                QMessageBox.information(self, 'Informações', 'Nenhuma informação encontrada para a data fornecida.')
+            if not resultados:
+                self.mostrar_erro("Nenhuma informação encontrada para a data selecionada.")
                 return
 
-            dados_texto = "\n".join([
-                f"Data: {d[1]}, Nome do Host: {d[2]}, MAC: {d[3]}, IP: {d[4]}, Portas: {d[5]}"
-                for d in dados
+            self.janela_resultados = QWidget()
+            self.janela_resultados.setWindowTitle('Informações Armazenadas')
+            self.janela_resultados.setGeometry(100, 100, 600, 400)
+            layout = QVBoxLayout()
+
+            texto_resultados = "\n".join([
+                f"ID: {r[0]} | Data: {r[1]} | Hostname: {r[2]} | MAC: {r[3]} | IP: {r[4]} | Portas: {r[5]}"
+                for r in resultados
             ])
-            self.mostrar_resultados(dados_texto)
+            label_resultados = QLabel(texto_resultados)
+            label_resultados.setAlignment(Qt.AlignTop)
+            layout.addWidget(label_resultados)
+
+            botao_fechar = QPushButton('Fechar', self.janela_resultados)
+            botao_fechar.clicked.connect(self.janela_resultados.close)
+            layout.addWidget(botao_fechar)
+
+            self.janela_resultados.setLayout(layout)
+            self.janela_resultados.show()
         except Exception as e:
             self.mostrar_erro(f"Erro ao buscar informações: {e}")
-
-    def mostrar_resultados(self, dados_texto):
-        self.janela_resultados = QWidget()
-        self.janela_resultados.setWindowTitle('Resultados das Informações')
-        self.janela_resultados.setGeometry(100, 100, 600, 400)
-        layout = QVBoxLayout()
-
-        label_resultados = QLabel(dados_texto)
-        label_resultados.setAlignment(Qt.AlignTop)
-        layout.addWidget(label_resultados)
-
-        botao_fechar = QPushButton('Fechar', self.janela_resultados)
-        botao_fechar.clicked.connect(self.janela_resultados.close)
-        layout.addWidget(botao_fechar)
-
-        self.janela_resultados.setLayout(layout)
-        self.janela_resultados.show()
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaVerInformacoes
+
 if __name__ == '__main__':
     try:
         app = QApplication(sys.argv)
