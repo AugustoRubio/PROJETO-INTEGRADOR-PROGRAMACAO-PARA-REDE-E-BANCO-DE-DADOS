@@ -19,17 +19,42 @@ from datetime import datetime
 from usuarios import ConfigUsuarios
 from config_programa import ConfiguracaoProgramaDB
 from modos import Modo
+from criar_db import GerenciadorBancoDados
 
-# Define the ScannerRede class
+#Inicio da classe ScannerRede
 class ScannerRede:
     def __init__(self, portas_selecionadas, escaneamento_rapido):
         self.portas_selecionadas = portas_selecionadas
         self.escaneamento_rapido = escaneamento_rapido
 
     def escanear(self):
-        # Implement the network scanning logic here
-        # For now, return a dummy result for testing
+        # Implemente a lógica de escaneamento de rede aqui
+        # Por enquanto, retorna um resultado fictício para teste
         return [("Host1", "00:11:22:33:44:55", "192.168.1.1", self.portas_selecionadas)]
+#Fim da classe ScannerRede
+
+class VerificadorBancoDados:
+    def __init__(self, caminho_bd):
+        self.caminho_bd = caminho_bd
+
+    def verificar_ou_criar_bd(self):
+        if not os.path.exists(self.caminho_bd):
+            gerenciador_bd = GerenciadorBancoDados(self.caminho_bd)
+            gerenciador_bd.criar_conexao()
+            if gerenciador_bd.conn is not None:
+                gerenciador_bd.criar_tabelas()
+                gerenciador_bd.fechar_conexao()
+                print(f"Banco de dados criado em: {self.caminho_bd}")
+            else:
+                print("Erro! Não foi possível criar a conexão com o banco de dados.")
+        else:
+            print(f"Banco de dados já existe em: {self.caminho_bd}")
+
+# Verificar ou criar o banco de dados antes de iniciar a aplicação
+script_dir = os.path.dirname(os.path.abspath(__file__))
+database = os.path.join(script_dir, "banco.db")
+verificador_bd = VerificadorBancoDados(database)
+verificador_bd.verificar_ou_criar_bd()
 
 class JanelaLogin(QWidget):
     def __init__(self):
@@ -314,7 +339,7 @@ class JanelaPrincipal(QWidget):
         self.hide()  # Use hide() instead of close() to prevent triggering closeEvent
 
     def abrir_janela_config_usuarios(self):
-        self.janela_config_usuarios = JanelaConfigUsuarios(self.usuario_logado)
+        self.janela_config_usuarios = JanelaConfigUsuarios(self.usuario_logado, self.modo)
         self.janela_config_usuarios.show()
         self.hide()
 
@@ -624,10 +649,10 @@ class JanelaVerInformacoes(QWidget):
         self.show()
 #Fim da classe JanelaVerInformacoes
 
-#Inicio da classe JanelaConfigUsuarios
 class JanelaConfigUsuarios(QWidget):
-    def __init__(self, usuario_logado):
+    def __init__(self, usuario_logado, modo):
         self.usuario_logado = usuario_logado
+        self.modo = modo
         self.config_usuarios = ConfigUsuarios(usuario_logado)
         super().__init__()
         self.inicializarUI()
