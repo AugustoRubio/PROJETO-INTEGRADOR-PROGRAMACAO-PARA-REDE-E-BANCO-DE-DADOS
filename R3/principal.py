@@ -1,94 +1,162 @@
+#Arquivo principal
+#Importação de bibliotecas
+#Biblioteca de importação dos recursos do sistema
 import sys
+#Biblioteca de manipulação de banco de dados SQLite
 import sqlite3
+#Biblioteca de criptografia
 import hashlib
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem
+#Biblioteca de janelas gráficas e widgets necessários para a interface funcionar.
+#PyQt5.QtWidgets é a biblioteca que permite a criação de janelas, botões, caixas de texto, etc.
+#E a partir dele é possível importar outros widgets e recursos.
+#QApllication é a classe que gerencia a aplicação. QWidgets é a classe base para todos os widgets. QLabel é a classe para exibir texto ou imagem.
+#QLineEdit é a classe para entrada de texto. QPushButton é a classe para botões. QVBoxLayout e QHBoxLayout são classes para organizar widgets verticalmente e horizontalmente.
+#QMessageBox é a classe para exibir mensagens. QDesktopWidget é a classe para obter informações sobre o desktop.
+#QCheckBox é a classe para caixas de seleção. QListWidget é a classe para exibir uma lista de itens.
+#QListWidgetItem é a classe para itens de lista. QCalendarWidget é a classe para exibir um calendário.
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget
+#QtGui é a biblioteca que contém classes para gerenciamento de recursos gráficos.
+#E a partir dele é possível importar outros recursos gráficos.
+#QPixmap é a classe para exibir imagens. QFont é a classe para definir a fonte do texto. QMovie é a classe para exibir animações. QIcon é a classe para exibir ícones.
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon
+#QtCore é a biblioteca que contém classes para gerenciamento de recursos não gráficos.
+#E a partir dele é possível importar outros recursos não gráficos.
+#Qt é a classe para definir constantes. QEvent é a classe para gerenciar eventos.
 from PyQt5.QtCore import Qt, QEvent
+#Biblioteca para manipulação de endereços de rede
 import os
+#Importamos as classes ScannerRede e ScannerRedeExterno do arquivo scanner_rede.py
 try:
-    from scanner_rede import RedeAtual
-    from scanner_rede import ScannerRede as ScannerRedeExterno
+    from scanner_rede import RedeAtual, ScannerRede as ScannerRedeExterno
 except ImportError:
     class RedeAtual:
         def obter_rede_atual(self):
-            # Dummy implementation for RedeAtual
-            return "Dummy Network"
-
-from PyQt5.QtWidgets import QCalendarWidget
+            return None
 from datetime import datetime
+#Importamos a Classe ConfigUsuarios do arquivo usuarios.py
 from usuarios import ConfigUsuarios
+#Importamos a Classe ConfigProgramaDB do arquivo config_programa.py
 from config_programa import ConfiguracaoProgramaDB
+#Importamos a Classe modo do arquivo modos.py
 from modos import Modo
+#Importamos a Classe GerenciadorBancoDados do arquivo criar_db.py
 from criar_db import GerenciadorBancoDados
 
-#Inicio da classe ScannerRede
+#Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
+#Como a função de escanear a rede captura as informações nesse arquivo, é necessário inicializar as variáveis antes de chamar a função
+#Essas variáveis são necessárias para a execução da função de escanear a rede
+#Inicio da Classe JanelaVerInformacoes
 class ScannerRede:
+    #Inicializamos as variáveis que serão utilizadas na função de escanear a rede
+    #Essas variáveis receberam os valores necesseários quando a função for chamada
     def __init__(self, portas_selecionadas, escaneamento_rapido):
+        #Fazemos a inicialização das variáveis usando os valores passados como parâmetro e atribuimos o self para que possam ser acessadas em outras funções
         self.portas_selecionadas = portas_selecionadas
         self.escaneamento_rapido = escaneamento_rapido
-
+    #Essa função é necessária para canaliar a recepção de dados para a função de escanear a rede e enviar os dados para o outro script
     def escanear(self):
-        # Implemente a lógica de escaneamento de rede aqui
-        # Por enquanto, retorna um resultado fictício para teste
+        #Retornamos um valor padrão para que não ocorra erro de variável não definida.        
         return [("Host1", "00:11:22:33:44:55", "192.168.1.1", self.portas_selecionadas)]
 #Fim da classe ScannerRede
 
+#Essa classe executa uma checagem do banco de dados, removendo a necessidade de executar o script criar_db.py
+#O script criar_db.py é executado automaticamente ao iniciar a aplicação, verificando se o banco de dados já existe e criando-o caso não exista
+#Inicio da classe JanelaVerInformacoes
 class VerificadorBancoDados:
+    #Inicializamos a classe com o caminho do banco de dados
+    #Representamos o caminho do banco de dados como uma variável de classe
     def __init__(self, caminho_bd):
         self.caminho_bd = caminho_bd
-
+    
+    #Faremos a verificação do banco de dados, verificando se ele já existe
+    #Usamos o parametro self para acessar a variável de classe e poder ser acessada em outras funções
     def verificar_ou_criar_bd(self):
+        #Verificamos o caminho do banco de dados, se ele não existir, criamos o banco de dados
         if not os.path.exists(self.caminho_bd):
+            #Passamos o caminho do banco de dados para a classe GerenciadorBancoDados que passa instruções para o arquivo criar_db.py que contém a função de criar o banco de dados
             gerenciador_bd = GerenciadorBancoDados(self.caminho_bd)
+            #Após receber o parametro do arquivo criar_db.py, a função criar_conexao é para criar uma conexão com o banco de dados
             gerenciador_bd.criar_conexao()
+            #Verficamos se o arquivo está vazio ou não usando a definição None, se estiver vazio, criamos as tabelas.
             if gerenciador_bd.conn is not None:
+                #Aqui criamos as tabelas no banco de dados e salvamos já que usamos a função com with
                 gerenciador_bd.criar_tabelas()
+                #Fechamos a conexão com o banco de dados
                 gerenciador_bd.fechar_conexao()
+                #Imprimimos uma mensagem de sucesso
                 print(f"Banco de dados criado em: {self.caminho_bd}")
+            #Se não for possível criar a conexão com o banco de dados, imprimimos uma mensagem de erro
             else:
                 print("Erro! Não foi possível criar a conexão com o banco de dados.")
+        #Se o banco de dados já existir, imprimimos uma mensagem informando que o banco de dados já existe
         else:
             print(f"Banco de dados já existe em: {self.caminho_bd}")
+#Fim da classe VerificadorBancoDados
 
-# Verificar ou criar o banco de dados antes de iniciar a aplicação
+#Aqui verificamos se o script foi executado pelo arquivo gerado pelo PyInstaller ou se foi executado diretamente pelo arquivo principal.py
+#Se o script foi executado pelo arquivo gerado pelo PyInstaller, usamos o caminho do executável, para que seja possivel acessar os arquivos necessários como a pasta de apoio
+#Se o script foi executado diretamente pelo arquivo principal.py, usamos o caminho do arquivo principal.py que seria a raiz do projeto
+#Usamos a função getattr para verificar se o script foi empacotado pelo PyInstaller, passamos o sys como parametro e o atributo 'frozen' que é um atributo que é definido quando o script é empacotado pelo PyInstaller
 if getattr(sys, 'frozen', False):
-    # Se o script estiver congelado pelo PyInstaller, use o caminho relativo ao executável
+    #Se o script foi empacotado pelo PyInstaller, usamos o caminho do executável
     script_dir = os.path.dirname(sys.executable)
+    #Caso contrário, usamos o caminho do arquivo principal.py
 else:
     # Se o script estiver sendo executado normalmente, use o caminho do script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
+#Reforçamos o caminho do banco de dados, juntando o caminho do script com o nome do banco de dados
 database = os.path.join(script_dir, "banco.db")
 verificador_bd = VerificadorBancoDados(database)
 verificador_bd.verificar_ou_criar_bd()
 
+#Aqui criamos a aplicação gráfica.
+#A aplicação é criada usando a classe QWidget que é a classe base para todos os widgets
 class JanelaLogin(QWidget):
+    #Inicializamos a classe com a função __init__ e permitimos que a classe herde as propriedades da classe QWidget
     def __init__(self):
+        #Usamos a função super() para acessar a classe pai (QWidgets) e inicializamos a classe pai
         super().__init__()
+        #Aqui precisamos já inicializar a instacia da classe Modo para que possamos usar a função de trocar o modo de cores das janelas
+        #Como a classe Modo é usada em todas as janelas, precisamos inicializar ela aqui para que possamos usar a função de trocar o modo de cores em todas as janelas
         self.modo = Modo()
+        #Usamos a função inicializarUI para inicializar todos os componentes da interface gráfica
         self.inicializarUI()
 
+    #Vamos declarar a função inicializarUI que será responsável por inicializar todos os componentes da interface gráfica e definir o layout da janela
     def inicializarUI(self):
+        #Definimos o título da janela
         self.setWindowTitle('Login')
-        self.setGeometry(100, 100, 800, 600)  # Define o tamanho da janela
-        self.setWindowState(Qt.WindowMaximized)  # Permite que a janela seja maximizada
+        #Definimos a geometria da janela em pixels (x, y, largura, altura)
+        self.setGeometry(100, 100, 800, 600)
+        #Forçamos a janela a ser maximizada quando aberta
+        self.setWindowState(Qt.WindowMaximized)
 
-        # Buscar configuração do banco de dados
+        #Aqui precisamos buscar todas as configurações do programa no banco de dados
         try:
+            #Conectamos dentro do banco de dados com o alias dessa conexão sendo o nome conexao
             with sqlite3.connect('banco.db') as conexao:
+                #Usamos o alias anterior da conexão para criar um cursor para executar comandos SQL
                 cursor = conexao.cursor()
+                #Aqui selecionamos os parametros que existem na tabela config_programa e também reforçamos a seleção do primeiro registro
                 cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte FROM config_programa WHERE id = 1')
+                #Guardamos o resultado da seleção em uma variável chamada configuração
                 configuracao = cursor.fetchone()
+        #Se ocorrer algum erro ao buscar as configurações do banco de dados, imprimimos uma mensagem de erro
         except Exception as e:
             self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
+            #Retornamos para que a função não continue a ser executada
             return
-
+        #Aqui verificamos se a estrutura de configuração foi encontrada no banco de dados, nesse caso a estrutura é a logo principal, logo do rodapé, fonte principal e tamanho da fonte
         if configuracao:
             self.logo_principal, self.logo_rodape, self.fonte_principal, self.tamanho_fonte = configuracao
+        #Se a estrutura de configuração não for encontrada no banco de dados, imprimimos uma mensagem de erro
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
+            #Retornamos para que a função não continue a ser executada
             return
-
+        #Aqui definimos o layout da janela como um QVBoxLayout que organiza os widgets verticalmente.
+        #Isso permite organizar os widgets na janela de cima para baixo.
         self.layout = QVBoxLayout()
 
         # Adicionar logo principal
