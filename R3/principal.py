@@ -16,6 +16,7 @@ except ImportError:
 
 from PyQt5.QtWidgets import QCalendarWidget
 from datetime import datetime
+from usuarios import ConfigUsuarios
 
 # Define the ScannerRede class
 class ScannerRede:
@@ -131,11 +132,22 @@ class JanelaLogin(QWidget):
         if resultado:
             senha_hash = hashlib.sha256(senha.encode()).hexdigest()
             if senha_hash == resultado[0]:
+                self.registrar_login(usuario)
                 self.abrir_janela_principal()
             else:
                 QMessageBox.warning(self, 'Erro', 'Senha incorreta.')
         else:
             QMessageBox.warning(self, 'Erro', 'Usuário não encontrado.')
+
+    def registrar_login(self, usuario):
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                data_hora_atual = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                cursor.execute('UPDATE usuarios SET ultimo_login = ? WHERE usuario = ?', (data_hora_atual, usuario))
+                conexao.commit()
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao registrar login: {e}")
 
     def abrir_janela_principal(self):
         usuario_logado = self.obter_usuario_logado()
@@ -483,9 +495,11 @@ class JanelaVerInformacoes(QWidget):
 #Fim da classe JanelaVerInformacoes
 
 # Inicio da classe JanelaConfigUsuarios
+
 class JanelaConfigUsuarios(QWidget):
     def __init__(self, usuario_logado):
         self.usuario_logado = usuario_logado
+        self.config_usuarios = ConfigUsuarios(usuario_logado)
         super().__init__()
         self.inicializarUI()
 
@@ -503,9 +517,9 @@ class JanelaConfigUsuarios(QWidget):
         self.botao_adicionar_usuario.clicked.connect(self.adicionar_usuario)
         layout.addWidget(self.botao_adicionar_usuario, alignment=Qt.AlignTop)
 
-        self.botao_adicionar_usuario = QPushButton('Alterar senhas', self)
-        self.botao_adicionar_usuario.clicked.connect(self.alterar_senha)
-        layout.addWidget(self.botao_adicionar_usuario, alignment=Qt.AlignTop)
+        self.botao_alterar_senha = QPushButton('Alterar senhas', self)
+        self.botao_alterar_senha.clicked.connect(self.alterar_senha)
+        layout.addWidget(self.botao_alterar_senha, alignment=Qt.AlignTop)
 
         self.botao_remover_usuario = QPushButton('Remover Usuário', self)
         self.botao_remover_usuario.clicked.connect(self.remover_usuario)
@@ -587,17 +601,8 @@ class JanelaConfigUsuarios(QWidget):
             self.mostrar_erro("Todos os campos são obrigatórios.")
             return
 
-        senha_hash = hashlib.sha256(senha.encode()).hexdigest()
-        data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('''
-                    INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (usuario, senha_hash, data_criacao, nome_completo, email, is_admin))
-                conexao.commit()
+            self.config_usuarios.adicionar_usuario(usuario, nome_completo, email, senha, is_admin)
             QMessageBox.information(self, 'Sucesso', 'Usuário adicionado com sucesso.')
             self.janela_adicionar.close()
         except Exception as e:
@@ -620,11 +625,7 @@ class JanelaConfigUsuarios(QWidget):
         layout.addWidget(self.lista_usuarios_remover)
 
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios')
-                usuarios = cursor.fetchall()
-
+            usuarios = self.config_usuarios.listar_usuarios()
             for usuario in usuarios:
                 item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
                 item.setData(Qt.UserRole, usuario)
@@ -653,19 +654,8 @@ class JanelaConfigUsuarios(QWidget):
         usuario = item_selecionado.data(Qt.UserRole)
         usuario_id = usuario[0]
 
-        if usuario_id == 1:
-            self.mostrar_erro("O administrador padrão não pode ser removido.")
-            return
-
-        if usuario_id == self.usuario_logado['id']:
-            self.mostrar_erro("Você não pode remover o usuário atualmente logado.")
-            return
-
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('DELETE FROM usuarios WHERE id = ?', (usuario_id,))
-                conexao.commit()
+            self.config_usuarios.remover_usuario(usuario_id)
             QMessageBox.information(self, 'Sucesso', 'Usuário removido com sucesso.')
             self.janela_remover.close()
         except Exception as e:
@@ -673,10 +663,7 @@ class JanelaConfigUsuarios(QWidget):
 
     def ver_informacoes_usuarios(self):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios')
-                usuarios = cursor.fetchall()
+            usuarios = self.config_usuarios.listar_usuarios()
 
             self.janela_ver_usuarios = QWidget()
             self.janela_ver_usuarios.setWindowTitle('Informações dos Usuários')
@@ -764,47 +751,12 @@ class JanelaConfigUsuarios(QWidget):
         is_admin = 1 if self.checkbox_is_admin.isChecked() else 0
 
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('UPDATE usuarios SET usuario = ?, nome_completo = ?, email = ?, is_admin = ? WHERE id = ?', (usuario, nome_completo, email, is_admin, usuario_id))
-                conexao.commit()
+            self.config_usuarios.editar_usuario(usuario_id, usuario, nome_completo, email, is_admin)
             QMessageBox.information(self, 'Sucesso', 'Informações do usuário atualizadas com sucesso.')
             self.janela_edicao.close()
             self.janela_ver_usuarios.close()
         except Exception as e:
             self.mostrar_erro(f"Erro ao salvar informações do usuário: {e}")
-
-    def ver_informacoes_usuario(self, usuario_logado):
-        try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios WHERE id = ?', (usuario_logado['id'],))
-                usuario = cursor.fetchone()
-
-            if not usuario:
-                self.mostrar_erro("Usuário não encontrado.")
-                return
-
-            self.janela_ver_usuario = QWidget()
-            self.janela_ver_usuario.setWindowTitle('Informações do Usuário')
-            self.janela_ver_usuario.setGeometry(100, 100, 400, 300)
-            layout = QVBoxLayout()
-
-            label_usuario = QLabel(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
-            layout.addWidget(label_usuario)
-
-            botao_fechar = QPushButton('Fechar', self.janela_ver_usuario)
-            botao_fechar.clicked.connect(self.janela_ver_usuario.close)
-            layout.addWidget(botao_fechar)
-
-            self.janela_ver_usuario.setLayout(layout)
-            self.janela_ver_usuario.show()
-        except Exception as e:
-            self.mostrar_erro(f"Erro ao buscar informações do usuário: {e}")
-
-    def mostrar_erro(self, mensagem):
-        QMessageBox.critical(self, 'Erro', mensagem)
-        self.show()
 
     def alterar_senha(self):
         if not self.usuario_logado['is_admin']:
@@ -822,11 +774,7 @@ class JanelaConfigUsuarios(QWidget):
             layout.addWidget(self.lista_usuarios)
 
             try:
-                with sqlite3.connect('banco.db') as conexao:
-                    cursor = conexao.cursor()
-                    cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios')
-                    usuarios = cursor.fetchall()
-
+                usuarios = self.config_usuarios.listar_usuarios()
                 for usuario in usuarios:
                     item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
                     item.setData(Qt.UserRole, usuario)
@@ -894,19 +842,18 @@ class JanelaConfigUsuarios(QWidget):
             self.mostrar_erro("As senhas não coincidem.")
             return
 
-        senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
-
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('UPDATE usuarios SET senha = ? WHERE id = ?', (senha_hash, usuario_id))
-                conexao.commit()
+            self.config_usuarios.alterar_senha(usuario_id, nova_senha)
             QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
             self.janela_alterar_senha.close()
             if hasattr(self, 'janela_selecionar_usuario'):
                 self.janela_selecionar_usuario.close()
         except Exception as e:
             self.mostrar_erro(f"Erro ao alterar senha: {e}")
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
 # Fim da classe JanelaConfigUsuarios
 
 if __name__ == '__main__':
