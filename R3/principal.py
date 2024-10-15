@@ -1,8 +1,8 @@
 import sys
 import sqlite3
 import hashlib
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem
-from PyQt5.QtGui import QPixmap, QFont, QMovie
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem
+from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon
 from PyQt5.QtCore import Qt, QEvent
 import os
 try:
@@ -17,6 +17,7 @@ except ImportError:
 from PyQt5.QtWidgets import QCalendarWidget
 from datetime import datetime
 from usuarios import ConfigUsuarios
+from config_programa import ConfiguracaoProgramaDB
 
 # Define the ScannerRede class
 class ScannerRede:
@@ -50,7 +51,7 @@ class JanelaLogin(QWidget):
             return
 
         if configuracao:
-            logo_principal, logo_rodape, fonte_principal, tamanho_fonte = configuracao
+            self.logo_principal, self.logo_rodape, self.fonte_principal, self.tamanho_fonte = configuracao
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
             return
@@ -58,21 +59,21 @@ class JanelaLogin(QWidget):
         self.layout = QVBoxLayout()
 
         # Adicionar logo principal
-        if logo_principal:
+        if self.logo_principal:
             self.label_logo_principal = QLabel(self)
             self.label_logo_principal.setAlignment(Qt.AlignCenter)
-            if logo_principal.endswith('.gif'):
-                self.movie_logo_principal = QMovie(logo_principal)
+            if self.logo_principal.endswith('.gif'):
+                self.movie_logo_principal = QMovie(self.logo_principal)
                 self.label_logo_principal.setMovie(self.movie_logo_principal)
                 self.movie_logo_principal.start()
             else:
-                self.pixmap_logo_principal = QPixmap(logo_principal)
+                self.pixmap_logo_principal = QPixmap(self.logo_principal)
                 self.label_logo_principal.setPixmap(self.pixmap_logo_principal.scaled(self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_principal)
 
         # Definir fonte
-        if fonte_principal and tamanho_fonte:
-            self.setFont(QFont(fonte_principal, tamanho_fonte))
+        if self.fonte_principal and self.tamanho_fonte:
+            self.setFont(QFont(self.fonte_principal, self.tamanho_fonte))
 
         self.label_usuario = QLabel('Usuário:', self)
         self.label_usuario.setAlignment(Qt.AlignCenter)
@@ -101,14 +102,15 @@ class JanelaLogin(QWidget):
         self.layout.addWidget(self.botao_login, alignment=Qt.AlignCenter)
 
         self.setLayout(self.layout)
+        self.adicionar_botao_modo()
 
         self.input_senha.returnPressed.connect(self.verificar_login)
 
         # Adicionar logo do rodapé
-        if logo_rodape:
+        if self.logo_rodape:
             self.label_logo_rodape = QLabel(self)
             self.label_logo_rodape.setAlignment(Qt.AlignCenter)
-            self.pixmap_logo_rodape = QPixmap(logo_rodape)
+            self.pixmap_logo_rodape = QPixmap(self.logo_rodape)
             self.label_logo_rodape.setPixmap(self.pixmap_logo_rodape.scaled(200, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_rodape)
 
@@ -152,7 +154,7 @@ class JanelaLogin(QWidget):
     def abrir_janela_principal(self):
         usuario_logado = self.obter_usuario_logado()
         if usuario_logado:
-            self.janela_principal = JanelaPrincipal(usuario_logado)
+            self.janela_principal = JanelaPrincipal(usuario_logado, self.modo_atual)
             self.janela_principal.show()
             self.hide()  # Hide the login window after successful login
         else:
@@ -174,11 +176,111 @@ class JanelaLogin(QWidget):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
 
+    def adicionar_botao_modo(self):
+        # Adicionar switch de modo claro/escuro com ícones
+        self.switch_modo = QPushButton(self)
+        self.switch_modo.setMaximumWidth(150)
+        self.switch_modo.setCheckable(True)
+        self.switch_modo.setChecked(False)
+        self.switch_modo.clicked.connect(self.trocar_modo)
+        self.layout.addWidget(self.switch_modo, alignment=Qt.AlignRight)
+
+        # Definir modo inicial
+        self.modo_atual = 'claro'
+        self.atualizar_switch()
+
+    def trocar_modo(self):
+        if self.modo_atual == 'claro':
+            self.modo_atual = 'escuro'
+        else:
+            self.modo_atual = 'claro'
+        self.atualizar_switch()
+
+    def atualizar_switch(self):
+        if self.modo_atual == 'escuro':
+            self.switch_modo.setIcon(QIcon('apoio/sun-mode.png'))
+            self.switch_modo.setStyleSheet("""
+            QPushButton {
+                background-color: #555555;
+                color: #FFFFFF;
+                border: 2px solid #FFFFFF;
+                border-radius: 15px;
+                padding: 5px;
+                text-align: right;
+                padding-right: 30px;
+            }
+            QPushButton:checked {
+                background-color: #2E2E2E;
+                color: #FFFFFF;
+                text-align: right;
+                padding-right: 30px;
+            }
+            """)
+            self.setStyleSheet(f"""
+            QWidget {{
+                background-color: #2E2E2E;
+                color: #FFFFFF;
+                font-family: {self.fonte_principal};
+                font-size: {self.tamanho_fonte}px;
+            }}
+            QPushButton {{
+                background-color: #555555;
+                color: #FFFFFF;
+            }}
+            QLineEdit {{
+                background-color: #555555;
+                color: #FFFFFF;
+            }}
+            QLabel {{
+                color: #FFFFFF;
+            }}
+            """)
+        else:
+            self.switch_modo.setIcon(QIcon('apoio/night-mode.png'))
+            self.switch_modo.setStyleSheet("""
+            QPushButton {
+                background-color: #DDDDDD;
+                color: #000000;
+                border: 2px solid #000000;
+                border-radius: 15px;
+                padding: 5px;
+                text-align: left;
+                padding-left: 30px;
+            }
+            QPushButton:checked {
+                background-color: #FFFFFF;
+                color: #000000;
+                text-align: left;
+                padding-left: 30px;
+            }
+            """)
+            self.setStyleSheet(f"""
+            QWidget {{
+                background-color: #FFFFFF;
+                color: #000000;
+                font-family: {self.fonte_principal};
+                font-size: {self.tamanho_fonte}px;
+            }}
+            QPushButton {{
+                background-color: #DDDDDD;
+                color: #000000;
+            }}
+            QLineEdit {{
+                background-color: #FFFFFF;
+                color: #000000;
+            }}
+            QLabel {{
+                color: #000000;
+            }}
+            """)
+#Fim da classe JanelaLogin
+
 #Começo da classe JanelaPrincipal
 class JanelaPrincipal(QWidget):
-    def __init__(self, usuario_logado):
+    def __init__(self, usuario_logado, modo_atual):
         super().__init__()
         self.usuario_logado = usuario_logado
+        self.modo_atual = modo_atual
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -191,7 +293,19 @@ class JanelaPrincipal(QWidget):
         # Adicionar informações do usuário logado no canto superior esquerdo da janela
         self.label_usuario_logado = QLabel(f"Usuário: {self.usuario_logado['usuario']} ({'Admin' if self.usuario_logado['is_admin'] else 'Comum'})", self)
         self.label_usuario_logado.setAlignment(Qt.AlignLeft)
-        layout.addWidget(self.label_usuario_logado, alignment=Qt.AlignLeft)
+
+        # Adicionar switch de modo claro/escuro no canto superior direito
+        self.switch_modo = QPushButton(self)
+        self.switch_modo.setMaximumWidth(150)
+        self.switch_modo.setCheckable(True)
+        self.switch_modo.setChecked(self.modo_atual == 'escuro')
+        self.switch_modo.clicked.connect(self.trocar_modo)
+        self.atualizar_switch()
+
+        top_layout = QHBoxLayout()
+        top_layout.addWidget(self.label_usuario_logado, alignment=Qt.AlignLeft)
+        top_layout.addWidget(self.switch_modo, alignment=Qt.AlignRight)
+        layout.addLayout(top_layout)
 
         self.botao_dashboard = QPushButton('DASHBOARD', self)
         layout.addWidget(self.botao_dashboard)
@@ -204,7 +318,8 @@ class JanelaPrincipal(QWidget):
         self.botao_config_usuarios.clicked.connect(self.JanelaConfigUsuarios)
         layout.addWidget(self.botao_config_usuarios)
 
-        self.botao_config_programa = QPushButton('Configuração do programa', self)
+        self.botao_config_programa = QPushButton('Configurações do programa', self)
+        self.botao_config_programa.clicked.connect(self.JanelaConfigPrograma)
         layout.addWidget(self.botao_config_programa)
 
         self.botao_sair = QPushButton('SAIR', self)
@@ -242,6 +357,92 @@ class JanelaPrincipal(QWidget):
         self.janela_config_usuarios = JanelaConfigUsuarios(self.usuario_logado)
         self.janela_config_usuarios.show()
         self.hide()
+
+    def JanelaConfigPrograma(self):
+        self.janela_config_programa = JanelaConfigPrograma(self.usuario_logado)
+        self.janela_config_programa.show()
+        self.hide()
+
+    def trocar_modo(self):
+        if self.modo_atual == 'claro':
+            self.modo_atual = 'escuro'
+        else:
+            self.modo_atual = 'claro'
+        self.atualizar_switch()
+
+    def atualizar_switch(self):
+        if self.modo_atual == 'escuro':
+            self.switch_modo.setIcon(QIcon('apoio/sun-mode.png'))
+            self.switch_modo.setStyleSheet("""
+            QPushButton {
+                background-color: #555555;
+                color: #FFFFFF;
+                border: 2px solid #FFFFFF;
+                border-radius: 15px;
+                padding: 5px;
+                text-align: right;
+                padding-right: 30px;
+            }
+            QPushButton:checked {
+                background-color: #2E2E2E;
+                color: #FFFFFF;
+                text-align: right;
+                padding-right: 30px;
+            }
+            """)
+            self.setStyleSheet("""
+            QWidget {
+                background-color: #2E2E2E;
+                color: #FFFFFF;
+            }
+            QPushButton {
+                background-color: #555555;
+                color: #FFFFFF;
+            }
+            QLineEdit {
+                background-color: #555555;
+                color: #FFFFFF;
+            }
+            QLabel {
+                color: #FFFFFF;
+            }
+            """)
+        else:
+            self.switch_modo.setIcon(QIcon('apoio/night-mode.png'))
+            self.switch_modo.setStyleSheet("""
+            QPushButton {
+                background-color: #DDDDDD;
+                color: #000000;
+                border: 2px solid #000000;
+                border-radius: 15px;
+                padding: 5px;
+                text-align: left;
+                padding-left: 30px;
+            }
+            QPushButton:checked {
+                background-color: #FFFFFF;
+                color: #000000;
+                text-align: left;
+                padding-left: 30px;
+            }
+            """)
+            self.setStyleSheet("""
+            QWidget {
+                background-color: #FFFFFF;
+                color: #000000;
+            }
+            QPushButton {
+                background-color: #DDDDDD;
+                color: #000000;
+            }
+            QLineEdit {
+                background-color: #FFFFFF;
+                color: #000000;
+            }
+            QLabel {
+                color: #000000;
+            }
+            """)
 #Fim da classe JanelaPrincipal
 
 #Começo da classe JanelaScannerRede
@@ -855,6 +1056,102 @@ class JanelaConfigUsuarios(QWidget):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
 # Fim da classe JanelaConfigUsuarios
+
+# Define the JanelaConfigPrograma class
+class JanelaConfigPrograma(QWidget):
+    def __init__(self, usuario_logado):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.config_db = ConfiguracaoProgramaDB('banco.db', QApplication.instance())
+        self.inicializarUI()
+
+    def inicializarUI(self):
+        self.setWindowTitle('Configurações do Programa')
+        self.setGeometry(100, 100, 600, 400)
+        self.center()
+
+        layout = QVBoxLayout()
+
+        self.label_instrucoes = QLabel('Configure as opções do programa:', self)
+        layout.addWidget(self.label_instrucoes, alignment=Qt.AlignTop)
+
+        self.input_logo_principal = QLineEdit(self)
+        layout.addWidget(QLabel('Logo Principal:'))
+        layout.addWidget(self.input_logo_principal)
+
+        self.botao_logo_principal = QPushButton('Selecionar Logo Principal', self)
+        self.botao_logo_principal.clicked.connect(self.selecionar_logo_principal)
+        layout.addWidget(self.botao_logo_principal)
+
+        self.input_logo_rodape = QLineEdit(self)
+        layout.addWidget(QLabel('Logo Rodapé:'))
+        layout.addWidget(self.input_logo_rodape)
+
+        self.botao_logo_rodape = QPushButton('Selecionar Logo Rodapé', self)
+        self.botao_logo_rodape.clicked.connect(self.selecionar_logo_rodape)
+        layout.addWidget(self.botao_logo_rodape)
+
+        self.input_fonte_principal = QLineEdit(self)
+        layout.addWidget(QLabel('Fonte Principal:'))
+        layout.addWidget(self.input_fonte_principal)
+
+        self.input_tamanho_fonte = QLineEdit(self)
+        layout.addWidget(QLabel('Tamanho da Fonte:'))
+        layout.addWidget(self.input_tamanho_fonte)
+
+        botao_salvar = QPushButton('Salvar', self)
+        botao_salvar.clicked.connect(self.salvar_configuracoes)
+        layout.addWidget(botao_salvar)
+
+        botao_cancelar = QPushButton('Cancelar', self)
+        botao_cancelar.clicked.connect(self.close)
+        layout.addWidget(botao_cancelar)
+
+        self.setLayout(layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def selecionar_logo_principal(self):
+        caminho_logo = self.config_db.selecionar_imagem()
+        if caminho_logo:
+            self.input_logo_principal.setText(caminho_logo)
+
+    def selecionar_logo_rodape(self):
+        caminho_logo = self.config_db.selecionar_imagem()
+        if caminho_logo:
+            self.input_logo_rodape.setText(caminho_logo)
+
+    def salvar_configuracoes(self):
+        logo_principal = self.input_logo_principal.text()
+        logo_rodape = self.input_logo_rodape.text()
+        fonte_principal = self.input_fonte_principal.text()
+        tamanho_fonte = self.input_tamanho_fonte.text()
+
+        try:
+            self.config_db.atualizar_configuracao(
+                id_config=1,
+                logo_principal=logo_principal,
+                logo_rodape=logo_rodape,
+                fonte_principal=fonte_principal,
+                tamanho_fonte=tamanho_fonte
+            )
+            QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
+            self.voltar_menu_principal()
+        except Exception as e:
+            QMessageBox.critical(self, 'Erro', f"Erro ao salvar configurações: {e}")
+
+    def voltar_menu_principal(self):
+        self.janela_principal = JanelaPrincipal(self.usuario_logado)
+        self.janela_principal.show()
+        self.close()
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
 
 if __name__ == '__main__':
     try:
