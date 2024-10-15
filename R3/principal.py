@@ -51,7 +51,13 @@ class VerificadorBancoDados:
             print(f"Banco de dados já existe em: {self.caminho_bd}")
 
 # Verificar ou criar o banco de dados antes de iniciar a aplicação
-script_dir = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    # Se o script estiver congelado pelo PyInstaller, use o caminho relativo ao executável
+    script_dir = os.path.dirname(sys.executable)
+else:
+    # Se o script estiver sendo executado normalmente, use o caminho do script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
 database = os.path.join(script_dir, "banco.db")
 verificador_bd = VerificadorBancoDados(database)
 verificador_bd.verificar_ou_criar_bd()

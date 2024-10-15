@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import hashlib
+import sys
 
 class GerenciadorBancoDados:
     def __init__(self, caminho_bd):
@@ -127,7 +128,11 @@ class GerenciadorBancoDados:
             print("Conexão com o banco de dados fechada.")
 
 def principal():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    if getattr(sys, 'frozen', False):
+        script_dir = os.path.dirname(sys.executable)
+    else:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+    
     database = os.path.join(script_dir, "banco.db")
 
     if os.path.exists(database):
