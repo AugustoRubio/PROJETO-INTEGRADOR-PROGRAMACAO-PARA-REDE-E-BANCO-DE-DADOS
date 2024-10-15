@@ -9,8 +9,14 @@
 <p>Erik Freitas Silva</p>
 <p>Hugo Santos de Lima</p>
 <p>Paulo Sérgio Aparecido Monteiro Feliciano</p>
+<p>Fabricio Lima</p>
 
-#Começando:
+#Começando para o programa atual dentro do R3:
+
+- `EM CONSTRUÇÃO´
+
+
+#Começando para o programa dentro do R2:
 
 - `Passo 1`: Instale o Nmap no caminho padrão (C:\Program Files (x86)\Nmap\nmap.exe)
 
