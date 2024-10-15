@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import QCalendarWidget
 from datetime import datetime
 from usuarios import ConfigUsuarios
 from config_programa import ConfiguracaoProgramaDB
+from modos import Modo
 
 # Define the ScannerRede class
 class ScannerRede:
@@ -33,6 +34,7 @@ class ScannerRede:
 class JanelaLogin(QWidget):
     def __init__(self):
         super().__init__()
+        self.modo = Modo()
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -154,7 +156,7 @@ class JanelaLogin(QWidget):
     def abrir_janela_principal(self):
         usuario_logado = self.obter_usuario_logado()
         if usuario_logado:
-            self.janela_principal = JanelaPrincipal(usuario_logado, self.modo_atual)
+            self.janela_principal = JanelaPrincipal(usuario_logado, self.modo)
             self.janela_principal.show()
             self.hide()  # Hide the login window after successful login
         else:
@@ -181,106 +183,64 @@ class JanelaLogin(QWidget):
         self.switch_modo = QPushButton(self)
         self.switch_modo.setMaximumWidth(150)
         self.switch_modo.setCheckable(True)
-        self.switch_modo.setChecked(False)
+        self.switch_modo.setChecked(self.modo.modo_atual == 'escuro')
         self.switch_modo.clicked.connect(self.trocar_modo)
         self.layout.addWidget(self.switch_modo, alignment=Qt.AlignRight)
-
-        # Definir modo inicial
-        self.modo_atual = 'claro'
         self.atualizar_switch()
 
     def trocar_modo(self):
-        if self.modo_atual == 'claro':
-            self.modo_atual = 'escuro'
-        else:
-            self.modo_atual = 'claro'
+        self.modo.trocar_modo()
         self.atualizar_switch()
 
     def atualizar_switch(self):
-        if self.modo_atual == 'escuro':
-            self.switch_modo.setIcon(QIcon('apoio/sun-mode.png'))
-            self.switch_modo.setStyleSheet("""
-            QPushButton {
-                background-color: #555555;
-                color: #FFFFFF;
-                border: 2px solid #FFFFFF;
-                border-radius: 15px;
-                padding: 5px;
-                text-align: right;
-                padding-right: 30px;
-            }
-            QPushButton:checked {
-                background-color: #2E2E2E;
-                color: #FFFFFF;
-                text-align: right;
-                padding-right: 30px;
-            }
-            """)
-            self.setStyleSheet(f"""
-            QWidget {{
-                background-color: #2E2E2E;
-                color: #FFFFFF;
-                font-family: {self.fonte_principal};
-                font-size: {self.tamanho_fonte}px;
-            }}
-            QPushButton {{
-                background-color: #555555;
-                color: #FFFFFF;
-            }}
-            QLineEdit {{
-                background-color: #555555;
-                color: #FFFFFF;
-            }}
-            QLabel {{
-                color: #FFFFFF;
-            }}
-            """)
-        else:
-            self.switch_modo.setIcon(QIcon('apoio/night-mode.png'))
-            self.switch_modo.setStyleSheet("""
-            QPushButton {
-                background-color: #DDDDDD;
-                color: #000000;
-                border: 2px solid #000000;
-                border-radius: 15px;
-                padding: 5px;
-                text-align: left;
-                padding-left: 30px;
-            }
-            QPushButton:checked {
-                background-color: #FFFFFF;
-                color: #000000;
-                text-align: left;
-                padding-left: 30px;
-            }
-            """)
-            self.setStyleSheet(f"""
-            QWidget {{
-                background-color: #FFFFFF;
-                color: #000000;
-                font-family: {self.fonte_principal};
-                font-size: {self.tamanho_fonte}px;
-            }}
-            QPushButton {{
-                background-color: #DDDDDD;
-                color: #000000;
-            }}
-            QLineEdit {{
-                background-color: #FFFFFF;
-                color: #000000;
-            }}
-            QLabel {{
-                color: #000000;
-            }}
-            """)
+        estilo = self.modo.atualizar_switch()
+        self.switch_modo.setIcon(QIcon(estilo["icone"]))
+        self.switch_modo.setStyleSheet(f"""
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+            border: {estilo["botao"]["border"]};
+            border-radius: {estilo["botao"]["border-radius"]};
+            padding: {estilo["botao"]["padding"]};
+            text-align: {estilo["botao"]["text-align"]};
+            padding-right: {estilo["botao"].get("padding-right", "0px")};
+            padding-left: {estilo["botao"].get("padding-left", "0px")};
+        }}
+        QPushButton:checked {{
+            background-color: {estilo["botao_checked"]["background-color"]};
+            color: {estilo["botao_checked"]["color"]};
+            text-align: {estilo["botao_checked"]["text-align"]};
+            padding-right: {estilo["botao_checked"].get("padding-right", "0px")};
+            padding-left: {estilo["botao_checked"].get("padding-left", "0px")};
+        }}
+        """)
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {estilo["widget"]["font-family"]};
+            font-size: {estilo["widget"]["font-size"]};
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
 #Fim da classe JanelaLogin
 
 #Começo da classe JanelaPrincipal
 class JanelaPrincipal(QWidget):
-    def __init__(self, usuario_logado, modo_atual):
-        super().__init__()
+    def __init__(self, usuario_logado, modo):
+        super().__init__() 
         self.usuario_logado = usuario_logado
-        self.modo_atual = modo_atual
+        self.modo = modo
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -298,7 +258,7 @@ class JanelaPrincipal(QWidget):
         self.switch_modo = QPushButton(self)
         self.switch_modo.setMaximumWidth(150)
         self.switch_modo.setCheckable(True)
-        self.switch_modo.setChecked(self.modo_atual == 'escuro')
+        self.switch_modo.setChecked(self.modo.modo_atual == 'escuro')
         self.switch_modo.clicked.connect(self.trocar_modo)
         self.atualizar_switch()
 
@@ -315,11 +275,11 @@ class JanelaPrincipal(QWidget):
         layout.addWidget(self.botao_scanner_rede)
 
         self.botao_config_usuarios = QPushButton('Configurações de usuários', self)
-        self.botao_config_usuarios.clicked.connect(self.JanelaConfigUsuarios)
+        self.botao_config_usuarios.clicked.connect(self.abrir_janela_config_usuarios)
         layout.addWidget(self.botao_config_usuarios)
 
         self.botao_config_programa = QPushButton('Configurações do programa', self)
-        self.botao_config_programa.clicked.connect(self.JanelaConfigPrograma)
+        self.botao_config_programa.clicked.connect(self.abrir_janela_config_programa)
         layout.addWidget(self.botao_config_programa)
 
         self.botao_sair = QPushButton('SAIR', self)
@@ -349,107 +309,73 @@ class JanelaPrincipal(QWidget):
                 event.ignore()
 
     def executar_scanner_rede(self):
-        self.janela_scanner_rede = JanelaScannerRede(self.usuario_logado)
+        self.janela_scanner_rede = JanelaScannerRede(self.usuario_logado, self.modo)
         self.janela_scanner_rede.show()
         self.hide()  # Use hide() instead of close() to prevent triggering closeEvent
 
-    def JanelaConfigUsuarios(self):
+    def abrir_janela_config_usuarios(self):
         self.janela_config_usuarios = JanelaConfigUsuarios(self.usuario_logado)
         self.janela_config_usuarios.show()
         self.hide()
 
-    def JanelaConfigPrograma(self):
-        self.janela_config_programa = JanelaConfigPrograma(self.usuario_logado)
+    def abrir_janela_config_programa(self):
+        self.janela_config_programa = JanelaConfigPrograma(self.usuario_logado, self.modo)
         self.janela_config_programa.show()
         self.hide()
 
     def trocar_modo(self):
-        if self.modo_atual == 'claro':
-            self.modo_atual = 'escuro'
-        else:
-            self.modo_atual = 'claro'
+        self.modo.trocar_modo()
         self.atualizar_switch()
 
     def atualizar_switch(self):
-        if self.modo_atual == 'escuro':
-            self.switch_modo.setIcon(QIcon('apoio/sun-mode.png'))
-            self.switch_modo.setStyleSheet("""
-            QPushButton {
-                background-color: #555555;
-                color: #FFFFFF;
-                border: 2px solid #FFFFFF;
-                border-radius: 15px;
-                padding: 5px;
-                text-align: right;
-                padding-right: 30px;
-            }
-            QPushButton:checked {
-                background-color: #2E2E2E;
-                color: #FFFFFF;
-                text-align: right;
-                padding-right: 30px;
-            }
-            """)
-            self.setStyleSheet("""
-            QWidget {
-                background-color: #2E2E2E;
-                color: #FFFFFF;
-            }
-            QPushButton {
-                background-color: #555555;
-                color: #FFFFFF;
-            }
-            QLineEdit {
-                background-color: #555555;
-                color: #FFFFFF;
-            }
-            QLabel {
-                color: #FFFFFF;
-            }
-            """)
-        else:
-            self.switch_modo.setIcon(QIcon('apoio/night-mode.png'))
-            self.switch_modo.setStyleSheet("""
-            QPushButton {
-                background-color: #DDDDDD;
-                color: #000000;
-                border: 2px solid #000000;
-                border-radius: 15px;
-                padding: 5px;
-                text-align: left;
-                padding-left: 30px;
-            }
-            QPushButton:checked {
-                background-color: #FFFFFF;
-                color: #000000;
-                text-align: left;
-                padding-left: 30px;
-            }
-            """)
-            self.setStyleSheet("""
-            QWidget {
-                background-color: #FFFFFF;
-                color: #000000;
-            }
-            QPushButton {
-                background-color: #DDDDDD;
-                color: #000000;
-            }
-            QLineEdit {
-                background-color: #FFFFFF;
-                color: #000000;
-            }
-            QLabel {
-                color: #000000;
-            }
-            """)
+        estilo = self.modo.atualizar_switch()
+        self.switch_modo.setIcon(QIcon(estilo["icone"]))
+        self.switch_modo.setStyleSheet(f"""
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+            border: {estilo["botao"]["border"]};
+            border-radius: {estilo["botao"]["border-radius"]};
+            padding: {estilo["botao"]["padding"]};
+            text-align: {estilo["botao"]["text-align"]};
+            padding-right: {estilo["botao"].get("padding-right", "0px")};
+            padding-left: {estilo["botao"].get("padding-left", "0px")};
+        }}
+        QPushButton:checked {{
+            background-color: {estilo["botao_checked"]["background-color"]};
+            color: {estilo["botao_checked"]["color"]};
+            text-align: {estilo["botao_checked"]["text-align"]};
+            padding-right: {estilo["botao_checked"].get("padding-right", "0px")};
+            padding-left: {estilo["botao_checked"].get("padding-left", "0px")};
+        }}
+        """)
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {estilo["widget"]["font-family"]};
+            font-size: {estilo["widget"]["font-size"]};
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
 #Fim da classe JanelaPrincipal
 
 #Começo da classe JanelaScannerRede
 class JanelaScannerRede(QWidget):
-    def __init__(self, usuario_logado):
+    def __init__(self, usuario_logado, modo):
         super().__init__()
         self.usuario_logado = usuario_logado
+        self.modo = modo
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -478,20 +404,17 @@ class JanelaScannerRede(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
-
     def abrir_janela_opcoes_scanner(self):
-        self.janela_opcoes_scanner = JanelaOpcoesScanner(self.usuario_logado)
+        self.janela_opcoes_scanner = JanelaOpcoesScanner(self.usuario_logado, self.modo)
         self.janela_opcoes_scanner.show()
 
     def abrir_janela_ver_informacoes(self):
         self.janela_ver_informacoes = JanelaVerInformacoes()
         self.janela_ver_informacoes.show()
-
     def voltar_menu_principal(self):
-        self.janela_principal = JanelaPrincipal(self.usuario_logado)
+        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
         self.janela_principal.show()
         self.close()
-
     def closeEvent(self, event):
         self.voltar_menu_principal()
         event.accept()
@@ -499,12 +422,14 @@ class JanelaScannerRede(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaScannerRede
 
 #Inicio da classe JanelaOpcoesScanner
 class JanelaOpcoesScanner(QWidget):
-    def __init__(self, usuario_logado):
+    def __init__(self, usuario_logado, modo):
         super().__init__()
         self.usuario_logado = usuario_logado
+        self.modo = modo
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -538,6 +463,10 @@ class JanelaOpcoesScanner(QWidget):
         self.botao_escanear_rede = QPushButton('Escanear', self)
         self.botao_escanear_rede.clicked.connect(self.escanear_rede)
         layout.addWidget(self.botao_escanear_rede)
+
+        self.botao_voltar = QPushButton('Voltar', self)
+        self.botao_voltar.clicked.connect(self.close)
+        layout.addWidget(self.botao_voltar)
 
         self.setLayout(layout)
 
@@ -695,8 +624,7 @@ class JanelaVerInformacoes(QWidget):
         self.show()
 #Fim da classe JanelaVerInformacoes
 
-# Inicio da classe JanelaConfigUsuarios
-
+#Inicio da classe JanelaConfigUsuarios
 class JanelaConfigUsuarios(QWidget):
     def __init__(self, usuario_logado):
         self.usuario_logado = usuario_logado
@@ -746,7 +674,7 @@ class JanelaConfigUsuarios(QWidget):
         self.voltar_menu_principal()
 
     def voltar_menu_principal(self):
-        self.janela_principal = JanelaPrincipal(self.usuario_logado)
+        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
         self.janela_principal.show()
         self.close()
 
@@ -1059,9 +987,10 @@ class JanelaConfigUsuarios(QWidget):
 
 # Define the JanelaConfigPrograma class
 class JanelaConfigPrograma(QWidget):
-    def __init__(self, usuario_logado):
+    def __init__(self, usuario_logado, modo):
         super().__init__()
         self.usuario_logado = usuario_logado
+        self.modo = modo
         self.config_db = ConfiguracaoProgramaDB('banco.db', QApplication.instance())
         self.inicializarUI()
 
@@ -1104,7 +1033,7 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(botao_salvar)
 
         botao_cancelar = QPushButton('Cancelar', self)
-        botao_cancelar.clicked.connect(self.close)
+        botao_cancelar.clicked.connect(self.voltar_janela_anterior)
         layout.addWidget(botao_cancelar)
 
         self.setLayout(layout)
@@ -1140,22 +1069,27 @@ class JanelaConfigPrograma(QWidget):
                 tamanho_fonte=tamanho_fonte
             )
             QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
-            self.voltar_menu_principal()
+            self.voltar_janela_anterior()
         except Exception as e:
             QMessageBox.critical(self, 'Erro', f"Erro ao salvar configurações: {e}")
 
-    def voltar_menu_principal(self):
-        self.janela_principal = JanelaPrincipal(self.usuario_logado)
-        self.janela_principal.show()
+    def voltar_janela_anterior(self):
+        self.janela_anterior = JanelaPrincipal(self.usuario_logado, self.modo)
+        self.janela_anterior.show()
         self.close()
+
+    def closeEvent(self, event):
+        self.voltar_janela_anterior()
+        event.accept()
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Final da classe JanelaConfigPrograma
 
 if __name__ == '__main__':
+    app = QApplication(sys.argv)
     try:
-        app = QApplication(sys.argv)
         janela = JanelaLogin()
         janela.show()
         sys.exit(app.exec_())
