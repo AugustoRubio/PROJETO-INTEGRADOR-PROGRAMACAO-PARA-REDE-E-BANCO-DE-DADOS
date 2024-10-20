@@ -78,7 +78,7 @@ class ScannerRede:
 
 #Essa classe executa uma checagem do banco de dados, removendo a necessidade de executar o script criar_db.py
 #O script criar_db.py é executado automaticamente ao iniciar a aplicação, verificando se o banco de dados já existe e criando-o caso não exista
-#Inicio da classe JanelaVerInformacoes
+#Inicio da classe VerificarBancoDados
 class VerificadorBancoDados:
     #Inicializamos a classe com o caminho do banco de dados
     #Representamos o caminho do banco de dados como uma variável de classe
@@ -415,14 +415,23 @@ class JanelaPrincipal(QWidget):
         self.confirmar_saida(event)
 
     def confirmar_saida(self, event=None):
-        reply = QMessageBox.question(self, 'Confirmação', 'Tem certeza que deseja sair?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        reply = QMessageBox(self)
+        reply.setWindowTitle('Confirmação')
+        reply.setText('Tem certeza que deseja sair?')
+        reply.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        button_yes = reply.button(QMessageBox.Yes)
+        button_yes.setText('Sim')
+        button_no = reply.button(QMessageBox.No)
+        button_no.setText('Não')
+        reply.exec_()
+
+        if reply.clickedButton() == button_yes:
             if event:
                 event.accept()
             else:
                 self.close()
-        elif event:
-            if event.type() == QEvent.Close:
+        else:
+            if event:
                 event.ignore()
 
     def executar_scanner_rede(self):
