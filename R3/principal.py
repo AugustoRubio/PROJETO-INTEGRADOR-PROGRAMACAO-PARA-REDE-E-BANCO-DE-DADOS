@@ -14,11 +14,11 @@ import hashlib
 #QMessageBox é a classe para exibir mensagens. QDesktopWidget é a classe para obter informações sobre o desktop.
 #QCheckBox é a classe para caixas de seleção. QListWidget é a classe para exibir uma lista de itens.
 #QListWidgetItem é a classe para itens de lista. QCalendarWidget é a classe para exibir um calendário.
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox
 #QtGui é a biblioteca que contém classes para gerenciamento de recursos gráficos.
 #E a partir dele é possível importar outros recursos gráficos.
 #QPixmap é a classe para exibir imagens. QFont é a classe para definir a fonte do texto. QMovie é a classe para exibir animações. QIcon é a classe para exibir ícones.
-from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon
+from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 #QtCore é a biblioteca que contém classes para gerenciamento de recursos não gráficos.
 #E a partir dele é possível importar outros recursos não gráficos.
 #Qt é a classe para definir constantes. QEvent é a classe para gerenciar eventos.
@@ -1173,9 +1173,12 @@ class JanelaConfigPrograma(QWidget):
         self.botao_logo_rodape.clicked.connect(self.selecionar_logo_rodape)
         layout.addWidget(self.botao_logo_rodape)
 
-        self.input_fonte_principal = QLineEdit(self)
+        self.combo_fonte_principal = QComboBox(self)
+        self.combo_fonte_principal.setEditable(True)
+        self.combo_fonte_principal.lineEdit().setReadOnly(True)
+        self.combo_fonte_principal.lineEdit().setAlignment(Qt.AlignCenter)
         layout.addWidget(QLabel('Fonte Principal:'))
-        layout.addWidget(self.input_fonte_principal)
+        layout.addWidget(self.combo_fonte_principal)
 
         self.input_tamanho_fonte = QLineEdit(self)
         layout.addWidget(QLabel('Tamanho da Fonte:'))
@@ -1190,6 +1193,7 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(botao_cancelar)
 
         self.setLayout(layout)
+        self.carregar_fontes()
 
     def center(self):
         qr = self.frameGeometry()
@@ -1207,10 +1211,49 @@ class JanelaConfigPrograma(QWidget):
         if caminho_logo:
             self.input_logo_rodape.setText(caminho_logo)
 
+    # Função para carregar as fontes disponíveis no sistema e adicioná-las ao combo box
+    def carregar_fontes(self):
+        # Obtém todas as famílias de fontes disponíveis
+        fontes = QFontDatabase().families()
+        # Adiciona cada fonte ao combo box e define a fonte correspondente
+        for fonte in fontes:
+            self.combo_fonte_principal.addItem(fonte)
+            index = self.combo_fonte_principal.findText(fonte)
+            self.combo_fonte_principal.setItemData(index, QFont(fonte), Qt.FontRole)
+        # Conecta a mudança de índice do combo box à função de atualização de preview da fonte
+        self.combo_fonte_principal.currentIndexChanged.connect(self.atualizar_preview_fonte)
+        # Habilita o rastreamento do mouse na lista do combo box
+        self.combo_fonte_principal.view().setMouseTracking(True)
+        # Conecta a entrada do mouse na lista do combo box à função de expansão da lista
+        self.combo_fonte_principal.view().entered.connect(self.expandir_lista)
+        # Instala um filtro de eventos no campo de edição do combo box
+        self.combo_fonte_principal.lineEdit().installEventFilter(self)
+
+    # Função para atualizar o preview da fonte no campo de edição do combo box
+    def atualizar_preview_fonte(self):
+        # Obtém a fonte selecionada no combo box
+        fonte = self.combo_fonte_principal.currentText()
+        # Define a fonte do campo de edição do combo box para a fonte selecionada
+        self.combo_fonte_principal.lineEdit().setFont(QFont(fonte))
+
+    # Função para expandir a lista do combo box quando o mouse entra em um item
+    def expandir_lista(self, index):
+        # Mostra o popup do combo box
+        self.combo_fonte_principal.showPopup()
+
+    # Filtro de eventos para detectar cliques no campo de edição do combo box
+    def eventFilter(self, source, event):
+        # Verifica se o evento é um clique do mouse e se a origem é o campo de edição do combo box
+        if event.type() == QEvent.MouseButtonPress and source == self.combo_fonte_principal.lineEdit():
+            # Mostra o popup do combo box
+            self.combo_fonte_principal.showPopup()
+        # Chama o filtro de eventos da classe base
+        return super().eventFilter(source, event)
+    
     def salvar_configuracoes(self):
         logo_principal = self.input_logo_principal.text()
         logo_rodape = self.input_logo_rodape.text()
-        fonte_principal = self.input_fonte_principal.text()
+        fonte_principal = self.combo_fonte_principal.currentText()
         tamanho_fonte = self.input_tamanho_fonte.text()
 
         try:
