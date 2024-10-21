@@ -49,8 +49,6 @@ class GerenciadorBancoDados:
                     )
                 ''')
 
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS config_programa (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,23 +56,39 @@ class GerenciadorBancoDados:
                         logo_principal TEXT,
                         logo_rodape TEXT,
                         fonte_principal TEXT,
-                        tamanho_fonte INTEGER
+                        tamanho_fonte INTEGER,
+                        modo_global INTEGER NOT NULL DEFAULT 0
                     )
                 ''')
+
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS preferencias (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        fonte_preferida TEXT NOT NULL
+                    )
+                ''')
+
+                script_dir = os.path.dirname(os.path.abspath(__file__))
 
                 apoio_dir = os.path.join(script_dir, "apoio")
                 if not os.path.exists(apoio_dir):
                     os.makedirs(apoio_dir)
 
                 cursor.execute('''
-                    INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte) VALUES (datetime('now'), ?, ?, ?, ?)
+                    INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global) VALUES (datetime('now'), ?, ?, ?, ?, ?)
                 ''', (
                     os.path.join(apoio_dir, "LOGO_R3.png"),
                     os.path.join(apoio_dir, "LOGO_R6.png"),
                     "Arial",
                     18,
+                    0  # Valor padrão para modo_global
                 ))
                 print("Configuração padrão inserida com sucesso.")
+
+                cursor.execute('''
+                    INSERT INTO preferencias (fonte_preferida) VALUES (?)
+                ''', ("Arial",))
+                print("Preferências padrão inseridas com sucesso.")
 
                 admin_password = hashlib.sha256("teste".encode()).hexdigest()
 
@@ -119,6 +133,12 @@ class GerenciadorBancoDados:
                 print("\nEstrutura da tabela 'config_programa':")
                 for column in config_programa_info:
                     print(column)
+
+                cursor.execute("PRAGMA table_info(preferencias)")
+                preferencias_info = cursor.fetchall()
+                print("\nEstrutura da tabela 'preferencias':")
+                for column in preferencias_info:
+                    print(column)
         except sqlite3.Error as e:
             print(e)
 
@@ -141,7 +161,7 @@ def principal():
 
     gerenciador_bd = GerenciadorBancoDados(database)
     gerenciador_bd.criar_conexao()
-    if gerenciador_bd.conn is not None:
+    if (gerenciador_bd.conn is not None):
         gerenciador_bd.criar_tabelas()
         gerenciador_bd.mostrar_estrutura_tabelas()
         gerenciador_bd.fechar_conexao()
