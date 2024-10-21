@@ -1180,9 +1180,12 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Fonte Principal:'))
         layout.addWidget(self.combo_fonte_principal)
 
-        self.input_tamanho_fonte = QLineEdit(self)
+        self.combo_tamanho_fonte = QComboBox(self)
+        self.combo_tamanho_fonte.setEditable(True)
+        self.combo_tamanho_fonte.lineEdit().setReadOnly(True)
+        self.combo_tamanho_fonte.lineEdit().setAlignment(Qt.AlignCenter)
         layout.addWidget(QLabel('Tamanho da Fonte:'))
-        layout.addWidget(self.input_tamanho_fonte)
+        layout.addWidget(self.combo_tamanho_fonte)
 
         botao_salvar = QPushButton('Salvar', self)
         botao_salvar.clicked.connect(self.salvar_configuracoes)
@@ -1194,6 +1197,8 @@ class JanelaConfigPrograma(QWidget):
 
         self.setLayout(layout)
         self.carregar_fontes()
+        self.carregar_tamanhos_fonte()
+        self.carregar_configuracoes()
 
     def center(self):
         qr = self.frameGeometry()
@@ -1211,50 +1216,66 @@ class JanelaConfigPrograma(QWidget):
         if caminho_logo:
             self.input_logo_rodape.setText(caminho_logo)
 
-    # Função para carregar as fontes disponíveis no sistema e adicioná-las ao combo box
     def carregar_fontes(self):
-        # Obtém todas as famílias de fontes disponíveis
         fontes = QFontDatabase().families()
-        # Adiciona cada fonte ao combo box e define a fonte correspondente
         for fonte in fontes:
             self.combo_fonte_principal.addItem(fonte)
             index = self.combo_fonte_principal.findText(fonte)
             self.combo_fonte_principal.setItemData(index, QFont(fonte), Qt.FontRole)
-        # Conecta a mudança de índice do combo box à função de atualização de preview da fonte
         self.combo_fonte_principal.currentIndexChanged.connect(self.atualizar_preview_fonte)
-        # Habilita o rastreamento do mouse na lista do combo box
         self.combo_fonte_principal.view().setMouseTracking(True)
-        # Conecta a entrada do mouse na lista do combo box à função de expansão da lista
-        self.combo_fonte_principal.view().entered.connect(self.expandir_lista)
-        # Instala um filtro de eventos no campo de edição do combo box
+        self.combo_fonte_principal.view().entered.connect(self.expandir_lista_fontes)
         self.combo_fonte_principal.lineEdit().installEventFilter(self)
 
-    # Função para atualizar o preview da fonte no campo de edição do combo box
+    def carregar_tamanhos_fonte(self):
+        for tamanho in range(1, 101):
+            self.combo_tamanho_fonte.addItem(str(tamanho))
+        self.combo_tamanho_fonte.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte)
+        self.combo_tamanho_fonte.view().setMouseTracking(True)
+        self.combo_tamanho_fonte.view().entered.connect(self.expandir_lista_tamanhos)
+        self.combo_tamanho_fonte.lineEdit().installEventFilter(self)
+
+    def carregar_configuracoes(self):
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte FROM config_programa WHERE id = 1')
+                configuracao = cursor.fetchone()
+                if configuracao:
+                    self.input_logo_principal.setText(configuracao[0])
+                    self.input_logo_rodape.setText(configuracao[1])
+                    self.combo_fonte_principal.setCurrentText(configuracao[2])
+                    self.combo_tamanho_fonte.setCurrentText(str(configuracao[3]))
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao carregar configurações: {e}")
+
     def atualizar_preview_fonte(self):
-        # Obtém a fonte selecionada no combo box
         fonte = self.combo_fonte_principal.currentText()
-        # Define a fonte do campo de edição do combo box para a fonte selecionada
         self.combo_fonte_principal.lineEdit().setFont(QFont(fonte))
 
-    # Função para expandir a lista do combo box quando o mouse entra em um item
-    def expandir_lista(self, index):
-        # Mostra o popup do combo box
+    def atualizar_preview_tamanho_fonte(self):
+        tamanho = self.combo_tamanho_fonte.currentText()
+        self.combo_tamanho_fonte.lineEdit().setFont(QFont(self.combo_fonte_principal.currentText(), int(tamanho)))
+
+    def expandir_lista_fontes(self, index):
         self.combo_fonte_principal.showPopup()
 
-    # Filtro de eventos para detectar cliques no campo de edição do combo box
+    def expandir_lista_tamanhos(self, index):
+        self.combo_tamanho_fonte.showPopup()
+
     def eventFilter(self, source, event):
-        # Verifica se o evento é um clique do mouse e se a origem é o campo de edição do combo box
-        if event.type() == QEvent.MouseButtonPress and source == self.combo_fonte_principal.lineEdit():
-            # Mostra o popup do combo box
-            self.combo_fonte_principal.showPopup()
-        # Chama o filtro de eventos da classe base
+        if event.type() == QEvent.MouseButtonPress:
+            if source == self.combo_fonte_principal.lineEdit():
+                self.combo_fonte_principal.showPopup()
+            elif source == self.combo_tamanho_fonte.lineEdit():
+                self.combo_tamanho_fonte.showPopup()
         return super().eventFilter(source, event)
-    
+
     def salvar_configuracoes(self):
         logo_principal = self.input_logo_principal.text()
         logo_rodape = self.input_logo_rodape.text()
         fonte_principal = self.combo_fonte_principal.currentText()
-        tamanho_fonte = self.input_tamanho_fonte.text()
+        tamanho_fonte = self.combo_tamanho_fonte.currentText()
 
         try:
             self.config_db.atualizar_configuracao(
