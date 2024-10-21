@@ -130,55 +130,55 @@ verificador_bd.verificar_ou_criar_bd()
 #Aqui criamos a aplicação gráfica.
 #A aplicação é criada usando a classe QWidget que é a classe base para todos os widgets
 class JanelaLogin(QWidget):
-    #Inicializamos a classe com a função __init__ e permitimos que a classe herde as propriedades da classe QWidget
+    # Inicializamos a classe com a função __init__ e permitimos que a classe herde as propriedades da classe QWidget
     def __init__(self):
-        #Usamos a função super() para acessar a classe pai (QWidgets) e inicializamos a classe pai
+        # Usamos a função super() para acessar a classe pai (QWidgets) e inicializamos a classe pai
         super().__init__()
-        #Aqui precisamos já inicializar a instacia da classe Modo para que possamos usar a função de trocar o modo de cores das janelas
-        #Como a classe Modo é usada em todas as janelas, precisamos inicializar ela aqui para que possamos usar a função de trocar o modo de cores em todas as janelas
+        # Aqui precisamos já inicializar a instância da classe Modo para que possamos usar a função de trocar o modo de cores das janelas
+        # Como a classe Modo é usada em todas as janelas, precisamos inicializar ela aqui para que possamos usar a função de trocar o modo de cores em todas as janelas
         self.modo = Modo()
-        #Aqui precisamos buscar todas as configurações do programa no banco de dados
+        # Aqui precisamos buscar todas as configurações do programa no banco de dados
         self.carregar_configuracoes()
-        #Usamos a função inicializarUI para inicializar todos os componentes da interface gráfica
+        # Usamos a função inicializarUI para inicializar todos os componentes da interface gráfica
         self.inicializarUI()
 
     def carregar_configuracoes(self):
         try:
-            #Conectamos dentro do banco de dados com o alias dessa conexão sendo o nome conexao
+            # Conectamos dentro do banco de dados com o alias dessa conexão sendo o nome conexao
             with sqlite3.connect('banco.db') as conexao:
-                #Usamos o alias anterior da conexão para criar um cursor para executar comandos SQL
+                # Usamos o alias anterior da conexão para criar um cursor para executar comandos SQL
                 cursor = conexao.cursor()
-                #Aqui selecionamos os parametros que existem na tabela config_programa e também reforçamos a seleção do primeiro registro
+                # Aqui selecionamos os parâmetros que existem na tabela config_programa e também reforçamos a seleção do primeiro registro
                 cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global FROM config_programa WHERE id = 1')
-                #Guardamos o resultado da seleção em uma variável chamada configuração
+                # Guardamos o resultado da seleção em uma variável chamada configuração
                 configuracao = cursor.fetchone()
-        #Se ocorrer algum erro ao buscar as configurações do banco de dados, imprimimos uma mensagem de erro
+        # Se ocorrer algum erro ao buscar as configurações do banco de dados, imprimimos uma mensagem de erro
         except Exception as e:
             self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
-            #Retornamos para que a função não continue a ser executada
+            # Retornamos para que a função não continue a ser executada
             return
-        #Aqui verificamos se a estrutura de configuração foi encontrada no banco de dados, nesse caso a estrutura é a logo principal, logo do rodapé, fonte principal e tamanho da fonte
+        # Aqui verificamos se a estrutura de configuração foi encontrada no banco de dados, nesse caso a estrutura é a logo principal, logo do rodapé, fonte principal e tamanho da fonte
         if configuracao:
             self.logo_principal, self.logo_rodape, self.fonte_principal, self.tamanho_fonte, self.modo_global = configuracao
             # Definir o modo inicial com base na configuração do banco de dados
             self.modo.modo_atual = 'escuro' if self.modo_global == 1 else 'claro'
-        #Se a estrutura de configuração não for encontrada no banco de dados, imprimimos uma mensagem de erro
+        # Se a estrutura de configuração não for encontrada no banco de dados, imprimimos uma mensagem de erro
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
-            #Retornamos para que a função não continue a ser executada
+            # Retornamos para que a função não continue a ser executada
             return
 
-    #Vamos declarar a função inicializarUI que será responsável por inicializar todos os componentes da interface gráfica e definir o layout da janela
+    # Vamos declarar a função inicializarUI que será responsável por inicializar todos os componentes da interface gráfica e definir o layout da janela
     def inicializarUI(self):
-        #Definimos o título da janela
+        # Definimos o título da janela
         self.setWindowTitle('Login')
-        #Definimos a geometria da janela em pixels (x, y, largura, altura)
+        # Definimos a geometria da janela em pixels (x, y, largura, altura)
         self.setGeometry(100, 100, 800, 600)
-        #Forçamos a janela a ser maximizada quando aberta
+        # Forçamos a janela a ser maximizada quando aberta
         self.setWindowState(Qt.WindowMaximized)
 
-        #Aqui definimos o layout da janela como um QVBoxLayout que organiza os widgets verticalmente.
-        #Isso permite organizar os widgets na janela de cima para baixo.
+        # Aqui definimos o layout da janela como um QVBoxLayout que organiza os widgets verticalmente.
+        # Isso permite organizar os widgets na janela de cima para baixo.
         self.layout = QVBoxLayout()
 
         # Adicionar logo principal
@@ -340,8 +340,8 @@ class JanelaLogin(QWidget):
         QWidget {{
             background-color: {estilo["widget"]["background-color"]};
             color: {estilo["widget"]["color"]};
-            font-family: {estilo["widget"]["font-family"]};
-            font-size: {estilo["widget"]["font-size"]};
+            font-family: {self.fonte_principal};
+            font-size: {self.tamanho_fonte}px;
         }}
         QPushButton {{
             background-color: {estilo["botao"]["background-color"]};
@@ -355,6 +355,9 @@ class JanelaLogin(QWidget):
             color: {estilo["label"]["color"]};
         }}
         """)
+        # Manter a fonte e o tamanho da fonte
+        if self.fonte_principal and self.tamanho_fonte:
+            self.setFont(QFont(self.fonte_principal, self.tamanho_fonte))
 
     def salvar_modo_global(self):
         try:
@@ -365,7 +368,7 @@ class JanelaLogin(QWidget):
                 conexao.commit()
         except Exception as e:
             self.mostrar_erro(f"Erro ao salvar modo global: {e}")
-#Fim da classe JanelaLogin
+# Fim da classe JanelaLogin
 
 #Começo da classe JanelaPrincipal
 class JanelaPrincipal(QWidget):
