@@ -1,72 +1,114 @@
-import collectd
-# import psutil (removed as it is not used directly in this script)
-import paramiko
+import json
+from collections import defaultdict
+import requests
 
-# Configurações SSH
-REMOTE_HOSTS = [
-    {'hostname': '192.168.1.2', 'username': 'user', 'password': 'password'},
-    {'hostname': '192.168.1.3', 'username': 'user', 'password': 'password'}
-]
+class MonitorDeHardware:
+    def __init__(self, url='http://localhost:8085/data.json'):
+        self.url = url
 
-def configure_callback():
-    collectd.info('Configuring collectd plugin')
+    # Obtém informações de hardware a partir da URL fornecida
+    def obter_info_hardware(self):
+        response = requests.get(self.url)
+        if response.status_code == 200:
+            info_hardware = response.json()
+            return info_hardware
+        else:
+            return {}
 
-def init_callback():
-    collectd.info('Initializing collectd plugin')
+class ExtratorDeInfoHardware:
+    @staticmethod
+    # Extrai informações de um nó específico
+    def extrair_info(no):
+        extraido = {
+            'id': no.get('id', ''),
+            'Texto': no.get('Text', ''),
+            'Min': no.get('Min', ''),
+            'Valor': no.get('Value', ''),
+            'Max': no.get('Max', ''),
+            'IdSensor': no.get('SensorId', ''),
+            'Tipo': no.get('Type', ''),
+            'URLImagem': no.get('ImageURL', ''),
+            'Filhos': [ExtratorDeInfoHardware.extrair_info(filho) for filho in no.get('Children', [])]
+        }
+        return extraido
 
-def read_callback():
-    for host in REMOTE_HOSTS:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(host['hostname'], username=host['username'], password=host['password'])
+    @staticmethod
+    # Obtém informações de hardware extraídas de todos os nós filhos
+    def obter_info(info_hardware):
+        return [ExtratorDeInfoHardware.extrair_info(hardware) for hardware in info_hardware.get('Children', [])]
 
-        # Collecting CPU usage
-        cpu_usage = get_remote_cpu_usage(ssh)
-        val = collectd.Values(plugin='cpu', host=host['hostname'])
-        val.type = 'gauge'
-        val.values = [cpu_usage]
-        val.dispatch()
+    @staticmethod
+    # Encontra sensores específicos dentro das informações extraídas
+    def encontrar_sensores_especificos(info_extraida):
+        sensores = {
+            'CPU Total': None,
+            'Temperatura CPU': None,
+            'Carga RAM': None,
+            'Carga GPU': None
+        }
 
-        # Collecting RAM usage
-        ram_usage = get_remote_ram_usage(ssh)
-        val = collectd.Values(plugin='memory', host=host['hostname'])
-        val.type = 'gauge'
-        val.values = [ram_usage]
-        val.dispatch()
+        # Percorre recursivamente os nós para encontrar os sensores específicos
+        def percorrer(no):
+            if no['Tipo'] == 'Load' and 'CPU Total' in no['Texto']:
+                sensores['CPU Total'] = no['Valor']
+            elif no['Tipo'] == 'Temperature' and 'Core (Tctl/Tdie)' in no['Texto']:
+                sensores['Temperatura CPU'] = no['Valor']
+            elif no['Tipo'] == 'Load' and 'Memory' in no['Texto']:
+                sensores['Carga RAM'] = no['Valor']
+            elif no['Tipo'] == 'Load' and 'GPU Core' in no['Texto']:
+                sensores['Carga GPU'] = no['Valor']
+            for filho in no['Filhos']:
+                percorrer(filho)
 
-        # Collecting Disk usage
-        disk_usage = get_remote_disk_usage(ssh)
-        val = collectd.Values(plugin='disk', host=host['hostname'])
-        val.type = 'gauge'
-        val.values = [disk_usage]
-        val.dispatch()
+        for info in info_extraida:
+            percorrer(info)
 
-        # Collecting CPU temperature
-        cpu_temp = get_remote_cpu_temperature(ssh)
-        val = collectd.Values(plugin='temperature', host=host['hostname'])
-        val.type = 'gauge'
-        val.values = [cpu_temp]
-        val.dispatch()
+        return sensores
 
-        ssh.close()
+# Agrupa e calcula a média dos valores por tipo de sensor
+def agrupar_e_media_por_tipo(info_extraida):
+    dados_agrupados = defaultdict(list)
+    
+    # Percorre recursivamente os nós para agrupar os dados por tipo
+    def percorrer(no):
+        if 'Tipo' in no and 'Valor' in no:
+            try:
+                valor = no['Valor'].replace(',', '.').split()[0] if no['Valor'] else '0'  # Lida com valores como "1,550 V"
+                dados_agrupados[no['Tipo']].append(float(valor))
+            except ValueError:
+                pass  # ou trate o erro conforme necessário
+        for filho in no.get('Filhos', []):
+            percorrer(filho)
+    
+    for info in info_extraida:
+        percorrer(info)
+    
+    # Calcula a média dos valores agrupados
+    dados_media = {k: sum(v) / len(v) for k, v in dados_agrupados.items() if v}
+    return dados_media
 
-def get_remote_cpu_usage(ssh):
-    _, stdout, _ = ssh.exec_command("python3 -c 'import psutil; print(psutil.cpu_percent(interval=1))'")
-    output = stdout.read().strip()
-    return float(output) if output else 0.0
+# Exemplo de uso
+if __name__ == '__main__':
+    # Busca dados reais da URL
+    monitor = MonitorDeHardware()
+    dados = monitor.obter_info_hardware()
 
-def get_remote_ram_usage(ssh):
-    _, stdout, _ = ssh.exec_command("python3 -c 'import psutil; print(psutil.virtual_memory().percent)'")
-    return float(stdout.read().strip())
+    # Extrai e imprime as informações dos sensores
+    extrator = ExtratorDeInfoHardware()
+    info_extraida = extrator.obter_info(dados)
 
-def get_remote_disk_usage(ssh):
-    _, stdout, _ = ssh.exec_command("python3 -c 'import psutil; print(psutil.disk_usage(\"/\").percent)'")
-    return float(stdout.read().strip())
+    # Função para imprimir informações dos sensores de forma hierárquica
+    def imprimir_sensor(sensor, nivel=0):
+        indentacao = "  " * nivel
+        print(f"{indentacao}ID do Sensor: {sensor['id']}, Texto: {sensor['Texto']}")
+        for filho in sensor['Filhos']:
+            imprimir_sensor(filho, nivel + 1)
 
-def get_remote_cpu_temperature(ssh):
-    _, stdout, _ = ssh.exec_command("python3 -c 'import psutil; temps = psutil.sensors_temperatures(); print(temps[\"coretemp\"][0].current if \"coretemp\" in temps else 0.0)'")
-    return float(stdout.read().strip())
+    for sensor in info_extraida:
+        imprimir_sensor(sensor)
 
-collectd.register_config(configure_callback)
-collectd.register_init(init_callback)
-collectd.register_read(read_callback)
+    # Encontra e imprime sensores específicos
+    sensores_especificos = extrator.encontrar_sensores_especificos(info_extraida)
+    print("\nSensores Específicos:")
+    for chave, valor in sensores_especificos.items():
+        print(f"{chave}: {valor}")

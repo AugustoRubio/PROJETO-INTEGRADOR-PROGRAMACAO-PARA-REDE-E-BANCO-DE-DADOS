@@ -14,7 +14,7 @@ import hashlib
 #QMessageBox é a classe para exibir mensagens. QDesktopWidget é a classe para obter informações sobre o desktop.
 #QCheckBox é a classe para caixas de seleção. QListWidget é a classe para exibir uma lista de itens.
 #QListWidgetItem é a classe para itens de lista. QCalendarWidget é a classe para exibir um calendário.
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem
 #QtGui é a biblioteca que contém classes para gerenciamento de recursos gráficos.
 #E a partir dele é possível importar outros recursos gráficos.
 #QPixmap é a classe para exibir imagens. QFont é a classe para definir a fonte do texto. QMovie é a classe para exibir animações. QIcon é a classe para exibir ícones.
@@ -47,17 +47,8 @@ from PyQt5.QtChart import QChart, QChartView, QLineSeries, QValueAxis
 from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QPainter
 import psutil
-try:
-    from dashboard import get_cpu_usage, get_ram_usage, get_disk_usage, get_cpu_temperature
-except ImportError:
-    def get_cpu_usage():
-        return 0
-    def get_ram_usage():
-        return 0
-    def get_disk_usage():
-        return 0
-    def get_cpu_temperature():
-        return 0
+from dashboard import MonitorDeHardware
+from dashboard import ExtratorDeInfoHardware
 
 #Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
 #Como a função de escanear a rede captura as informações nesse arquivo, é necessário inicializar as variáveis antes de chamar a função
@@ -472,7 +463,7 @@ class JanelaPrincipal(QWidget):
             QMessageBox.warning(self, 'Acesso Negado', 'Somente administradores podem acessar as configurações do programa.')
 
     def abrir_dashboard(self):
-        self.janela_dashboard = JanelaDashboard(self.modo)
+        self.janela_dashboard = JanelaDashboard(self.usuario_logado, self.modo)
         self.janela_dashboard.show()
         self.hide()
 
@@ -1304,9 +1295,10 @@ class JanelaConfigPrograma(QWidget):
         self.show()
 #Final da classe JanelaConfigPrograma
 
-class JanelaDashboard(QMainWindow):
-    def __init__(self, modo):
+class JanelaDashboard(QWidget):
+    def __init__(self, usuario_logado, modo):
         super().__init__()
+        self.usuario_logado = usuario_logado
         self.modo = modo
         self.inicializarUI()
 
@@ -1315,65 +1307,28 @@ class JanelaDashboard(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.center()
 
-        self.chart = self.create_chart("System Metrics Over Time", "Time", "Value", 0, 100)
-        self.series = {
-            "CPU Usage": {"series": QLineSeries(), "data": [], "color": Qt.red},
-            "Memory Usage": {"series": QLineSeries(), "data": [], "color": Qt.green},
-            "Disk Usage": {"series": QLineSeries(), "data": [], "color": Qt.blue},
-            "CPU Temperature": {"series": QLineSeries(), "data": [], "color": Qt.yellow}
-        }
-
-        for key, info in self.series.items():
-            info["series"].setName(key)
-            info["series"].setColor(info["color"])
-            self.chart.addSeries(info["series"])
-            info["series"].attachAxis(self.axisX)
-            info["series"].attachAxis(self.axisY)
-
-        self.chart_view = QChartView(self.chart)
-        self.chart_view.setRenderHint(QPainter.Antialiasing)
-
         layout = QVBoxLayout()
-        layout.addWidget(self.chart_view)
 
-        container = QWidget()
-        container.setLayout(layout)
-        self.setCentralWidget(container)
+        self.tabela_dados = QTableWidget(self)
+        self.tabela_dados.setColumnCount(2)
+        self.tabela_dados.setHorizontalHeaderLabels(['Sensor', 'Valor'])
+        layout.addWidget(self.tabela_dados)
 
+        self.botao_atualizar = QPushButton('Atualizar', self)
+        self.botao_atualizar.clicked.connect(self.atualizar_dados)
+        layout.addWidget(self.botao_atualizar)
+
+        self.botao_voltar = QPushButton('Voltar', self)
+        self.botao_voltar.clicked.connect(self.voltar_menu_principal)
+        layout.addWidget(self.botao_voltar)
+
+        self.setLayout(layout)
+        self.atualizar_dados()
+
+        # Configurar o temporizador para atualizar os dados a cada 10 segundos
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_charts)
-        self.timer.start(1000)
-
-    def create_chart(self, title, x_title, y_title, y_min, y_max):
-        chart = QChart()
-        chart.setTitle(title)
-
-        self.axisX = QValueAxis()
-        self.axisX.setTitleText(x_title)
-        self.axisX.setLabelFormat("%i")
-        chart.addAxis(self.axisX, Qt.AlignBottom)
-
-        self.axisY = QValueAxis()
-        self.axisY.setTitleText(y_title)
-        self.axisY.setRange(y_min, y_max)
-        chart.addAxis(self.axisY, Qt.AlignLeft)
-
-        return chart
-
-    def update_charts(self):
-        self.update_chart(self.series["CPU Usage"]["series"], self.series["CPU Usage"]["data"], get_cpu_usage())
-        self.update_chart(self.series["Memory Usage"]["series"], self.series["Memory Usage"]["data"], get_ram_usage())
-        self.update_chart(self.series["Disk Usage"]["series"], self.series["Disk Usage"]["data"], get_disk_usage())
-        self.update_chart(self.series["CPU Temperature"]["series"], self.series["CPU Temperature"]["data"], get_cpu_temperature())
-
-    def update_chart(self, series, data, value):
-        data.append(value)
-        if len(data) > 10:
-            data.pop(0)
-
-        series.clear()
-        for i, val in enumerate(data):
-            series.append(i, val)
+        self.timer.timeout.connect(self.atualizar_dados)
+        self.timer.start(10000)  # 10000 milissegundos = 10 segundos
 
     def center(self):
         qr = self.frameGeometry()
@@ -1381,18 +1336,27 @@ class JanelaDashboard(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-def get_cpu_usage():
-    return psutil.cpu_percent()
+    def atualizar_dados(self):
+        monitor = MonitorDeHardware()
+        data = monitor.obter_info_hardware()
 
-def get_ram_usage():
-    return psutil.virtual_memory().percent
+        extractor = ExtratorDeInfoHardware()
+        extracted_info = extractor.obter_info(data)
+        specific_sensors = extractor.encontrar_sensores_especificos(extracted_info)
 
-def get_disk_usage():
-    return psutil.disk_usage('/').percent
+        self.tabela_dados.setRowCount(len(specific_sensors))
+        for row, (sensor, value) in enumerate(specific_sensors.items()):
+            self.tabela_dados.setItem(row, 0, QTableWidgetItem(sensor))
+            self.tabela_dados.setItem(row, 1, QTableWidgetItem(str(value) if value else 'N/A'))
 
-def get_cpu_temperature():
-    # This is a placeholder function. Actual implementation may vary based on the system.
-    return 50.0
+    def voltar_menu_principal(self):
+        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
+        self.janela_principal.show()
+        self.close()
+
+    def closeEvent(self, event):
+        self.voltar_menu_principal()
+        event.accept()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
