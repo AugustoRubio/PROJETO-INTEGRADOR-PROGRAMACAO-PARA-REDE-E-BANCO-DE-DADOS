@@ -1,6 +1,6 @@
 #Arquivo principal é o responsável por iniciar a aplicação e construir as janelas gráficas.
 #Usando as bibliotecas sys (para acessar variáveis do sistema), sqlite3 (para acessar o banco de dados), hashlib (para criptografar a senha)
-#Usando as bibliotecas gráficas do PyQt5.QtWidgets (para criar janelas, botões, caixas de texto, etc), PyQt5.QtGui (para gerenciar recursos gráficos), PyQt5.QtCore (para gerenciar recursos não gráficos)
+#########Usando as bibliotecas gráficas do PyQt5.QtWidgets (para criar janelas, botões, caixas de texto, etc), PyQt5.QtGui (para gerenciar recursos gráficos), PyQt5.QtCore (para gerenciar recursos não gráficos)
 #Usando as classes ScannerRede e ScannerRedeExterno do arquivo scanner_rede.py, a Classe ConfigUsuarios do arquivo usuarios.py, a Classe ConfigProgramaDB do arquivo config_programa.py, a Classe modo do arquivo modos.py, a Classe GerenciadorBancoDados do arquivo criar_db.py
 #Usando as classes MonitorDeHardware e ExtratorDeInfoHardware do arquivo dashboard.py
 #Importação de bibliotecas
@@ -10,6 +10,7 @@ import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer
+
 import os
 #Para evitar erros de variável não definida, inicializamos as variáveis do Scanner de Rede usando o try e except
 try:
@@ -28,9 +29,9 @@ from modos import Modo
 #Importa as classes do arquivo criar_db.py, que cuida das funções de criar o banco de dados e verificar se o banco de dados já existe
 from criar_db import GerenciadorBancoDados
 #Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
-from dashboard import MonitorDeHardware
-#Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
-from dashboard import ExtratorDeInfoHardware
+from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
+from scanner_rede import PingIP
+from PyQt5.QtCore import QThread, pyqtSignal
 
 #Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
 #Como a função de escanear a rede captura as informações nesse arquivo, é necessário inicializar as variáveis antes de chamar a função
@@ -541,6 +542,10 @@ class JanelaScannerRede(QWidget):
         self.janela_principal.show()
         self.close()
     def closeEvent(self, event):
+        self.timer.stop()
+        for thread in self.findChildren(PingThread):
+            thread.stop()
+            thread.wait()
         self.voltar_menu_principal()
         event.accept()
 
@@ -1275,12 +1280,46 @@ class JanelaConfigPrograma(QWidget):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
 #Final da classe JanelaConfigPrograma
+        
+class PingThread(QThread):
+    resultado_ping = pyqtSignal(str, str, str, dict, str)
+
+    def __init__(self, usuario, ip, porta, parent=None):
+        super().__init__(parent)
+        self.usuario = usuario
+        self.ip = ip
+        self.porta = porta
+        self._is_running = True
+
+    def run(self):
+        ping = PingIP(self.ip)
+        status = "Online" if ping.ping() else "Offline"
+        if status == "Offline" or not self._is_running:
+            self.resultado_ping.emit(self.usuario, self.ip, self.porta, {}, status)
+            return
+
+        monitor = MonitorDeHardware(self.ip, self.porta)
+        dados = monitor.obter_info_hardware()
+        if not dados or not self._is_running:
+            self.resultado_ping.emit(self.usuario, self.ip, self.porta, {}, status)
+            return
+
+        extractor = ExtratorDeInfoHardware()
+        info_extraida = extractor.obter_info(dados)
+        specific_sensors = extractor.encontrar_sensores_especificos(info_extraida)
+        self.resultado_ping.emit(self.usuario, self.ip, self.porta, specific_sensors, status)
+
+    def stop(self):
+        self._is_running = False
 
 class JanelaDashboard(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.threads = []
+        self.dados_agrupados = {}
+        self.tempo_restante = 10  # Inicializa o tempo restante para 10 segundos
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -1291,8 +1330,8 @@ class JanelaDashboard(QWidget):
         layout = QVBoxLayout()
 
         self.tabela_dados = QTableWidget(self)
-        self.tabela_dados.setColumnCount(2)
-        self.tabela_dados.setHorizontalHeaderLabels(['Sensor', 'Valor'])
+        self.tabela_dados.setColumnCount(4)
+        self.tabela_dados.setHorizontalHeaderLabels(['PC', 'Sensor', 'Valor', 'Status'])
         layout.addWidget(self.tabela_dados)
 
         self.botao_atualizar = QPushButton('Atualizar', self)
@@ -1308,13 +1347,18 @@ class JanelaDashboard(QWidget):
         self.botao_voltar.clicked.connect(self.voltar_menu_principal)
         layout.addWidget(self.botao_voltar)
 
+        # Adiciona um label para mostrar o tempo restante para atualização
+        self.label_tempo_restante = QLabel(f'Tempo para atualização: {self.tempo_restante}s', self)
+        self.label_tempo_restante.setAlignment(Qt.AlignRight)
+        layout.addWidget(self.label_tempo_restante, alignment=Qt.AlignRight)
+
         self.setLayout(layout)
         self.atualizar_dados()
 
         # Configurar o temporizador para atualizar os dados a cada 10 segundos
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.atualizar_dados)
-        self.timer.start(10000)  # 10000 milissegundos = 10 segundos
+        self.timer.timeout.connect(self.decrementar_tempo)
+        self.timer.start(1000)  # 1000 milissegundos = 1 segundo
 
     def center(self):
         qr = self.frameGeometry()
@@ -1322,66 +1366,123 @@ class JanelaDashboard(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+    def decrementar_tempo(self):
+        self.tempo_restante -= 1
+        if self.tempo_restante <= 0:
+            self.atualizar_dados()
+            self.tempo_restante = 10  # Reinicia o tempo restante
+        self.label_tempo_restante.setText(f'Tempo para atualização: {self.tempo_restante}s')
+
     def atualizar_dados(self):
-        monitor = MonitorDeHardware()
-        data = monitor.obter_info_hardware()
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('''
+                    SELECT pc_salvo.id, usuarios.usuario, pc_salvo.ip, pc_salvo.porta
+                    FROM pc_salvo
+                    JOIN usuarios ON pc_salvo.usuario_id = usuarios.id
+                ''')
+                pcs_salvos = cursor.fetchall()
 
-        extractor = ExtratorDeInfoHardware()
-        extracted_info = extractor.obter_info(data)
-        specific_sensors = extractor.encontrar_sensores_especificos(extracted_info)
+            self.dados_agrupados.clear()
+            for pc in pcs_salvos:
+                _, usuario, ip, porta = pc
+                thread = PingThread(usuario, ip, porta)
+                thread.resultado_ping.connect(self.processar_resultado_ping)
+                thread.start()
+                self.threads.append(thread)
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao atualizar dados: {e}")
 
-        self.tabela_dados.setRowCount(len(specific_sensors))
-        for row, (sensor, value) in enumerate(specific_sensors.items()):
-            self.tabela_dados.setItem(row, 0, QTableWidgetItem(sensor))
-            self.tabela_dados.setItem(row, 1, QTableWidgetItem(str(value) if value else 'N/A'))
+    def processar_resultado_ping(self, usuario, ip, porta, specific_sensors, status):
+        chave = f"{usuario} ({ip}:{porta})"
+        if chave not in self.dados_agrupados:
+            self.dados_agrupados[chave] = []
+
+        if status == "Offline":
+            self.dados_agrupados[chave].append(("N/A", "N/A", status))
+        else:
+            for sensor, value in specific_sensors.items():
+                self.dados_agrupados[chave].append((sensor, str(value) if value else 'N/A', status))
+
+        self.atualizar_tabela()
+
+    def atualizar_tabela(self):
+        self.tabela_dados.setRowCount(0)  # Clear the table before updating
+        for pc, dados in self.dados_agrupados.items():
+            for sensor, valor, status in dados:
+                row_position = self.tabela_dados.rowCount()
+                self.tabela_dados.insertRow(row_position)
+                self.tabela_dados.setItem(row_position, 0, QTableWidgetItem(pc))
+                self.tabela_dados.setItem(row_position, 1, QTableWidgetItem(sensor))
+                self.tabela_dados.setItem(row_position, 2, QTableWidgetItem(valor))
+                self.tabela_dados.setItem(row_position, 3, QTableWidgetItem(status))
 
     def abrir_janela_configuracao(self):
-        self.janela_configuracao = JanelaConfiguracao(self.usuario_logado, self.modo)
+        self.janela_configuracao = JanelaConfigurarPCs(self.usuario_logado, self.modo, self)
         self.janela_configuracao.show()
 
     def voltar_menu_principal(self):
+        self.timer.stop()
+        for thread in self.threads:
+            thread.stop()
+            thread.wait()
         self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
         self.janela_principal.show()
         self.close()
 
     def closeEvent(self, event):
+        self.timer.stop()
+        for thread in self.threads:
+            thread.stop()
+            thread.wait()
         self.voltar_menu_principal()
         event.accept()
 
-class JanelaConfiguracao(QWidget):
-    def __init__(self, usuario_logado, modo):
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
+
+class JanelaConfigurarPCs(QWidget):
+    def __init__(self, usuario_logado, modo, parent_dashboard):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.parent_dashboard = parent_dashboard
         self.inicializarUI()
 
     def inicializarUI(self):
-        self.setWindowTitle('Configuração de Dados Externos')
+        self.setWindowTitle('Configurar PCs Salvos')
         self.setGeometry(100, 100, 600, 400)
         self.center()
 
         layout = QVBoxLayout()
 
-        self.label_instrucoes = QLabel('Configurar dados vindos de outras máquinas:', self)
+        self.label_instrucoes = QLabel('Configure os PCs salvos:', self)
         layout.addWidget(self.label_instrucoes, alignment=Qt.AlignTop)
 
-        self.input_ip_maquina = QLineEdit(self)
-        layout.addWidget(QLabel('IP da Máquina:'))
-        layout.addWidget(self.input_ip_maquina)
+        self.lista_usuarios = QListWidget(self)
+        layout.addWidget(QLabel('Selecione o usuário:'))
+        layout.addWidget(self.lista_usuarios)
+
+        self.input_ip = QLineEdit(self)
+        layout.addWidget(QLabel('IP:'))
+        layout.addWidget(self.input_ip)
 
         self.input_porta = QLineEdit(self)
         layout.addWidget(QLabel('Porta:'))
         layout.addWidget(self.input_porta)
 
         self.botao_salvar = QPushButton('Salvar', self)
-        self.botao_salvar.clicked.connect(self.salvar_configuracao)
+        self.botao_salvar.clicked.connect(self.salvar_pc)
         layout.addWidget(self.botao_salvar)
 
-        self.botao_cancelar = QPushButton('Cancelar', self)
-        self.botao_cancelar.clicked.connect(self.close)
-        layout.addWidget(self.botao_cancelar)
+        self.botao_voltar = QPushButton('Voltar', self)
+        self.botao_voltar.clicked.connect(self.voltar_dashboard)
+        layout.addWidget(self.botao_voltar)
 
         self.setLayout(layout)
+        self.carregar_usuarios()
 
     def center(self):
         qr = self.frameGeometry()
@@ -1389,23 +1490,55 @@ class JanelaConfiguracao(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def salvar_configuracao(self):
-        ip_maquina = self.input_ip_maquina.text()
+    def carregar_usuarios(self):
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario FROM usuarios')
+                usuarios = cursor.fetchall()
+                for usuario in usuarios:
+                    item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]}")
+                    item.setData(Qt.UserRole, usuario[0])
+                    self.lista_usuarios.addItem(item)
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao carregar usuários: {e}")
+
+    def salvar_pc(self):
+        item_selecionado = self.lista_usuarios.currentItem()
+        if not item_selecionado:
+            self.mostrar_erro("Por favor, selecione um usuário.")
+            return
+
+        usuario_id = item_selecionado.data(Qt.UserRole)
+        ip = self.input_ip.text()
         porta = self.input_porta.text()
 
-        if not ip_maquina or not porta:
-            QMessageBox.warning(self, 'Erro', 'Por favor, preencha todos os campos.')
+        if not ip or not porta:
+            self.mostrar_erro("Todos os campos são obrigatórios.")
             return
 
         try:
             with sqlite3.connect('banco.db') as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('INSERT INTO configuracoes_externas (ip_maquina, porta) VALUES (?, ?)', (ip_maquina, porta))
+                cursor.execute('''
+                    INSERT INTO pc_salvo (usuario_id, ip, porta) VALUES (?, ?, ?)
+                ''', (usuario_id, ip, porta))
                 conexao.commit()
-            QMessageBox.information(self, 'Sucesso', 'Configuração salva com sucesso.')
-            self.close()
+                QMessageBox.information(self, 'Sucesso', 'PC salvo com sucesso.')
         except Exception as e:
-            QMessageBox.critical(self, 'Erro', f"Erro ao salvar configuração: {e}")
+            self.mostrar_erro(f"Erro ao salvar PC: {e}")
+
+    def voltar_dashboard(self):
+        self.parent_dashboard.show()
+        self.close()
+
+    def closeEvent(self, event):
+        self.voltar_dashboard()
+        event.accept()
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

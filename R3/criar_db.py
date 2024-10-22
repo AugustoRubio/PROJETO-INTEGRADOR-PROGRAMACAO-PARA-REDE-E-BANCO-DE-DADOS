@@ -68,6 +68,16 @@ class GerenciadorBancoDados:
                     )
                 ''')
 
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS pc_salvo (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        usuario_id INTEGER NOT NULL,
+                        ip TEXT NOT NULL,
+                        porta TEXT NOT NULL,
+                        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                    )
+                ''')
+
                 script_dir = os.path.dirname(os.path.abspath(__file__))
 
                 apoio_dir = os.path.join(script_dir, "apoio")
@@ -138,6 +148,12 @@ class GerenciadorBancoDados:
                 preferencias_info = cursor.fetchall()
                 print("\nEstrutura da tabela 'preferencias':")
                 for column in preferencias_info:
+                    print(column)
+
+                cursor.execute("PRAGMA table_info(pc_salvo)")
+                pc_salvo_info = cursor.fetchall()
+                print("\nEstrutura da tabela 'pc_salvo':")
+                for column in pc_salvo_info:
                     print(column)
         except sqlite3.Error as e:
             print(e)

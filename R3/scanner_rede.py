@@ -7,6 +7,7 @@ import socket
 import ipaddress
 import psutil
 import os
+import time
 
 #Inicio da classe ScannerRede
 class ScannerRede:
@@ -85,3 +86,32 @@ class RedeAtual:
             print(f"Erro ao obter a rede atual: {e}")
             return None
 #Fim da classe RedeAtual
+
+class PingIP:
+    def __init__(self, ip, intervalo_ping=60):
+        self.ip = ip
+        self.intervalo_ping = intervalo_ping  # Intervalo de tempo entre pings em segundos
+        self.ultimo_ping = 0  # Timestamp do último ping
+
+    def ping(self):
+        # Verifica se já passou o intervalo de tempo desde o último ping
+        if time.time() - self.ultimo_ping < self.intervalo_ping:
+            return False
+
+        try:
+            # Executa o comando ping
+            num_pacotes = 2  # Número de pacotes a serem enviados
+            output = subprocess.run(['ping', '-n', str(num_pacotes), self.ip], capture_output=True, text=True)
+            
+            # Atualiza o timestamp do último ping
+            self.ultimo_ping = time.time()
+
+            # Verifica a quantidade de pacotes recebidos
+            for line in output.stdout.splitlines():
+                if "Received =" in line:
+                    received_packets = int(line.split("Received = ")[1].split(",")[0])
+                    return received_packets > 0
+            return False
+        except Exception as e:
+            print(f"Erro ao executar o comando ping: {e}")
+            return False
