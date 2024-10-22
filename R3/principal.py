@@ -1,32 +1,17 @@
-#Arquivo principal
+#Arquivo principal é o responsável por iniciar a aplicação e construir as janelas gráficas.
+#Usando as bibliotecas sys (para acessar variáveis do sistema), sqlite3 (para acessar o banco de dados), hashlib (para criptografar a senha)
+#Usando as bibliotecas gráficas do PyQt5.QtWidgets (para criar janelas, botões, caixas de texto, etc), PyQt5.QtGui (para gerenciar recursos gráficos), PyQt5.QtCore (para gerenciar recursos não gráficos)
+#Usando as classes ScannerRede e ScannerRedeExterno do arquivo scanner_rede.py, a Classe ConfigUsuarios do arquivo usuarios.py, a Classe ConfigProgramaDB do arquivo config_programa.py, a Classe modo do arquivo modos.py, a Classe GerenciadorBancoDados do arquivo criar_db.py
+#Usando as classes MonitorDeHardware e ExtratorDeInfoHardware do arquivo dashboard.py
 #Importação de bibliotecas
-#Biblioteca de importação dos recursos do sistema
 import sys
-#Biblioteca de manipulação de banco de dados SQLite
 import sqlite3
-#Biblioteca de criptografia
 import hashlib
-#Biblioteca de janelas gráficas e widgets necessários para a interface funcionar.
-#PyQt5.QtWidgets é a biblioteca que permite a criação de janelas, botões, caixas de texto, etc.
-#E a partir dele é possível importar outros widgets e recursos.
-#QApllication é a classe que gerencia a aplicação. QWidgets é a classe base para todos os widgets. QLabel é a classe para exibir texto ou imagem.
-#QLineEdit é a classe para entrada de texto. QPushButton é a classe para botões. QVBoxLayout e QHBoxLayout são classes para organizar widgets verticalmente e horizontalmente.
-#QMessageBox é a classe para exibir mensagens. QDesktopWidget é a classe para obter informações sobre o desktop.
-#QCheckBox é a classe para caixas de seleção. QListWidget é a classe para exibir uma lista de itens.
-#QListWidgetItem é a classe para itens de lista. QCalendarWidget é a classe para exibir um calendário.
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem
-#QtGui é a biblioteca que contém classes para gerenciamento de recursos gráficos.
-#E a partir dele é possível importar outros recursos gráficos.
-#QPixmap é a classe para exibir imagens. QFont é a classe para definir a fonte do texto. QMovie é a classe para exibir animações. QIcon é a classe para exibir ícones.
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
-#QtCore é a biblioteca que contém classes para gerenciamento de recursos não gráficos.
-#E a partir dele é possível importar outros recursos não gráficos.
-#Qt é a classe para definir constantes. QEvent é a classe para gerenciar eventos.
-from PyQt5.QtCore import Qt, QEvent
-
-#Biblioteca para manipulação de endereços de rede
+from PyQt5.QtCore import Qt, QEvent, QTimer
 import os
-#Importamos as classes ScannerRede e ScannerRedeExterno do arquivo scanner_rede.py
+#Para evitar erros de variável não definida, inicializamos as variáveis do Scanner de Rede usando o try e except
 try:
     from scanner_rede import RedeAtual, ScannerRede as ScannerRedeExterno
 except ImportError:
@@ -34,20 +19,17 @@ except ImportError:
         def obter_rede_atual(self):
             return None
 from datetime import datetime
-#Importamos a Classe ConfigUsuarios do arquivo usuarios.py
+#Importa as classes do arquivo usuarios.py, que cuida das funções de adicionar, editar, remover e listar usuários do banco de dados
 from usuarios import ConfigUsuarios
-#Importamos a Classe ConfigProgramaDB do arquivo config_programa.py
+#Importa as classes do arquivo config_programa.py, que cuida das funções de adicionar, editar e remover configurações do programa no banco de dados
 from config_programa import ConfiguracaoProgramaDB
-#Importamos a Classe modo do arquivo modos.py
+#Importa as classes do arquivo modos.py, que cuida das funções de trocar o modo de cores do programa
 from modos import Modo
-#Importamos a Classe GerenciadorBancoDados do arquivo criar_db.py
+#Importa as classes do arquivo criar_db.py, que cuida das funções de criar o banco de dados e verificar se o banco de dados já existe
 from criar_db import GerenciadorBancoDados
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget
-from PyQt5.QtChart import QChart, QChartView, QLineSeries, QValueAxis
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QPainter
-import psutil
+#Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import MonitorDeHardware
+#Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import ExtratorDeInfoHardware
 
 #Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
@@ -75,7 +57,6 @@ class VerificadorBancoDados:
     #Representamos o caminho do banco de dados como uma variável de classe
     def __init__(self, caminho_bd):
         self.caminho_bd = caminho_bd
-    
     #Faremos a verificação do banco de dados, verificando se ele já existe
     #Usamos o parametro self para acessar a variável de classe e poder ser acessada em outras funções
     def verificar_ou_criar_bd(self):
@@ -1318,6 +1299,11 @@ class JanelaDashboard(QWidget):
         self.botao_atualizar.clicked.connect(self.atualizar_dados)
         layout.addWidget(self.botao_atualizar)
 
+        if self.usuario_logado['is_admin']:
+            self.botao_configurar = QPushButton('Configurar', self)
+            self.botao_configurar.clicked.connect(self.abrir_janela_configuracao)
+            layout.addWidget(self.botao_configurar)
+
         self.botao_voltar = QPushButton('Voltar', self)
         self.botao_voltar.clicked.connect(self.voltar_menu_principal)
         layout.addWidget(self.botao_voltar)
@@ -1349,6 +1335,10 @@ class JanelaDashboard(QWidget):
             self.tabela_dados.setItem(row, 0, QTableWidgetItem(sensor))
             self.tabela_dados.setItem(row, 1, QTableWidgetItem(str(value) if value else 'N/A'))
 
+    def abrir_janela_configuracao(self):
+        self.janela_configuracao = JanelaConfiguracao(self.usuario_logado, self.modo)
+        self.janela_configuracao.show()
+
     def voltar_menu_principal(self):
         self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
         self.janela_principal.show()
@@ -1357,6 +1347,65 @@ class JanelaDashboard(QWidget):
     def closeEvent(self, event):
         self.voltar_menu_principal()
         event.accept()
+
+class JanelaConfiguracao(QWidget):
+    def __init__(self, usuario_logado, modo):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.modo = modo
+        self.inicializarUI()
+
+    def inicializarUI(self):
+        self.setWindowTitle('Configuração de Dados Externos')
+        self.setGeometry(100, 100, 600, 400)
+        self.center()
+
+        layout = QVBoxLayout()
+
+        self.label_instrucoes = QLabel('Configurar dados vindos de outras máquinas:', self)
+        layout.addWidget(self.label_instrucoes, alignment=Qt.AlignTop)
+
+        self.input_ip_maquina = QLineEdit(self)
+        layout.addWidget(QLabel('IP da Máquina:'))
+        layout.addWidget(self.input_ip_maquina)
+
+        self.input_porta = QLineEdit(self)
+        layout.addWidget(QLabel('Porta:'))
+        layout.addWidget(self.input_porta)
+
+        self.botao_salvar = QPushButton('Salvar', self)
+        self.botao_salvar.clicked.connect(self.salvar_configuracao)
+        layout.addWidget(self.botao_salvar)
+
+        self.botao_cancelar = QPushButton('Cancelar', self)
+        self.botao_cancelar.clicked.connect(self.close)
+        layout.addWidget(self.botao_cancelar)
+
+        self.setLayout(layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def salvar_configuracao(self):
+        ip_maquina = self.input_ip_maquina.text()
+        porta = self.input_porta.text()
+
+        if not ip_maquina or not porta:
+            QMessageBox.warning(self, 'Erro', 'Por favor, preencha todos os campos.')
+            return
+
+        try:
+            with sqlite3.connect('banco.db') as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('INSERT INTO configuracoes_externas (ip_maquina, porta) VALUES (?, ?)', (ip_maquina, porta))
+                conexao.commit()
+            QMessageBox.information(self, 'Sucesso', 'Configuração salva com sucesso.')
+            self.close()
+        except Exception as e:
+            QMessageBox.critical(self, 'Erro', f"Erro ao salvar configuração: {e}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
