@@ -7,6 +7,32 @@
 #Usando as classes MonitorDeHardware e ExtratorDeInfoHardware do arquivo dashboard.py
 #Importação de bibliotecas
 import sys
+import subprocess
+import importlib.util
+class DependencyChecker:
+    @staticmethod
+    def check_and_install_dependencies():
+        dependencies = [
+            "PyQt5",
+            "requests",
+            "python-nmap",
+            "mysql-connector-python"
+        ]
+
+        missing_dependencies = []
+        for dependency in dependencies:
+            if not importlib.util.find_spec(dependency):
+                missing_dependencies.append(dependency)
+
+        if missing_dependencies:
+            print(f"Instalando dependências ausentes: {', '.join(missing_dependencies)}")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", *missing_dependencies])
+        else:
+            print("Todas as dependências estão instaladas.")
+
+DependencyChecker.check_and_install_dependencies()
+
+import sys
 import mysql.connector
 import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
