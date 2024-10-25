@@ -7,13 +7,14 @@
 #Usando as classes MonitorDeHardware e ExtratorDeInfoHardware do arquivo dashboard.py
 #Importação de bibliotecas
 import sys
-import sqlite3
+import mysql.connector
 import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer
 
 import os
+import configparser
 #Para evitar erros de variável não definida, inicializamos as variáveis do Scanner de Rede usando o try e except
 try:
     from scanner_rede import RedeAtual, ScannerRede as ScannerRedeExterno
@@ -30,6 +31,7 @@ from config_programa import ConfiguracaoProgramaDB
 from modos import Modo
 #Importa as classes do arquivo criar_db.py, que cuida das funções de criar o banco de dados e verificar se o banco de dados já existe
 from criar_db import GerenciadorBancoDados
+from modos import Modo
 #Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
 from scanner_rede import PingIP
@@ -56,50 +58,45 @@ class ScannerRede:
 #O script criar_db.py é executado automaticamente ao iniciar a aplicação, verificando se o banco de dados já existe e criando-o caso não exista
 #Inicio da classe VerificarBancoDados
 class VerificadorBancoDados:
-    #Inicializamos a classe com o caminho do banco de dados
-    #Representamos o caminho do banco de dados como uma variável de classe
-    def __init__(self, caminho_bd):
-        self.caminho_bd = caminho_bd
-    #Faremos a verificação do banco de dados, verificando se ele já existe
-    #Usamos o parametro self para acessar a variável de classe e poder ser acessada em outras funções
-    def verificar_ou_criar_bd(self):
-        #Verificamos o caminho do banco de dados, se ele não existir, criamos o banco de dados
-        if not os.path.exists(self.caminho_bd):
-            #Passamos o caminho do banco de dados para a classe GerenciadorBancoDados que passa instruções para o arquivo criar_db.py que contém a função de criar o banco de dados
-            gerenciador_bd = GerenciadorBancoDados(self.caminho_bd)
-            #Após receber o parametro do arquivo criar_db.py, a função criar_conexao é para criar uma conexão com o banco de dados
-            gerenciador_bd.criar_conexao()
-            #Verficamos se o arquivo está vazio ou não usando a definição None, se estiver vazio, criamos as tabelas.
-            if gerenciador_bd.conn is not None:
-                #Aqui criamos as tabelas no banco de dados e salvamos já que usamos a função com with
-                gerenciador_bd.criar_tabelas()
-                #Fechamos a conexão com o banco de dados
-                gerenciador_bd.fechar_conexao()
-                #Imprimimos uma mensagem de sucesso
-                print(f"Banco de dados criado em: {self.caminho_bd}")
-            #Se não for possível criar a conexão com o banco de dados, imprimimos uma mensagem de erro
-            else:
-                print("Erro! Não foi possível criar a conexão com o banco de dados.")
-        #Se o banco de dados já existir, imprimimos uma mensagem informando que o banco de dados já existe
-        else:
-            print(f"Banco de dados já existe em: {self.caminho_bd}")
-#Fim da classe VerificadorBancoDados
+    def __init__(self, host, user, password, database, port):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
 
-#Aqui verificamos se o script foi executado pelo arquivo gerado pelo PyInstaller ou se foi executado diretamente pelo arquivo principal.py
-#Se o script foi executado pelo arquivo gerado pelo PyInstaller, usamos o caminho do executável, para que seja possivel acessar os arquivos necessários como a pasta de apoio
-#Se o script foi executado diretamente pelo arquivo principal.py, usamos o caminho do arquivo principal.py que seria a raiz do projeto
-#Usamos a função getattr para verificar se o script foi empacotado pelo PyInstaller, passamos o sys como parametro e o atributo 'frozen' que é um atributo que é definido quando o script é empacotado pelo PyInstaller
+    def verificar_ou_criar_bd(self):
+        gerenciador_bd = GerenciadorBancoDados(self.host, self.user, self.password, self.database, self.port)
+        gerenciador_bd.criar_conexao()
+        if gerenciador_bd.conn is not None:
+            gerenciador_bd.criar_tabelas()
+            gerenciador_bd.fechar_conexao()
+            print(f"Banco de dados verificado/criado com sucesso: {self.database}")
+        else:
+            print("Erro! Não foi possível criar a conexão com o banco de dados.")
+
+# Aqui verificamos se o script foi executado pelo arquivo gerado pelo PyInstaller ou se foi executado diretamente pelo arquivo principal.py
+# Se o script foi executado pelo arquivo gerado pelo PyInstaller, usamos o caminho do executável, para que seja possível acessar os arquivos necessários como a pasta de apoio
+# Se o script foi executado diretamente pelo arquivo principal.py, usamos o caminho do arquivo principal.py que seria a raiz do projeto
+# Usamos a função getattr para verificar se o script foi empacotado pelo PyInstaller, passamos o sys como parâmetro e o atributo 'frozen' que é um atributo que é definido quando o script é empacotado pelo PyInstaller
 if getattr(sys, 'frozen', False):
-    #Se o script foi empacotado pelo PyInstaller, usamos o caminho do executável
+    # Se o script foi empacotado pelo PyInstaller, usamos o caminho do executável
     script_dir = os.path.dirname(sys.executable)
-    #Caso contrário, usamos o caminho do arquivo principal.py
 else:
     # Se o script estiver sendo executado normalmente, use o caminho do script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-#Reforçamos o caminho do banco de dados, juntando o caminho do script com o nome do banco de dados
-database = os.path.join(script_dir, "banco.db")
-verificador_bd = VerificadorBancoDados(database)
+# Reforçamos o caminho do banco de dados, juntando o caminho do script com o nome do banco de dados
+config = configparser.ConfigParser()
+config.read(os.path.join(script_dir, 'config.ini'))
+
+host = config['mysql']['host']
+user = config['mysql']['user']
+password = config['mysql']['password']
+database = config['mysql']['database']
+port = config['mysql'].getint('port')
+
+verificador_bd = VerificadorBancoDados(host, user, password, database, port)
 verificador_bd.verificar_ou_criar_bd()
 
 #Aqui criamos a aplicação gráfica.
@@ -120,18 +117,28 @@ class JanelaLogin(QWidget):
     def carregar_configuracoes(self):
         try:
             # Conectamos dentro do banco de dados com o alias dessa conexão sendo o nome conexao
-            with sqlite3.connect('banco.db') as conexao:
-                # Usamos o alias anterior da conexão para criar um cursor para executar comandos SQL
-                cursor = conexao.cursor()
-                # Aqui selecionamos os parâmetros que existem na tabela config_programa e também reforçamos a seleção do primeiro registro
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global FROM config_programa WHERE id = 1')
-                # Guardamos o resultado da seleção em uma variável chamada configuração
-                configuracao = cursor.fetchone()
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            # Usamos o alias anterior da conexão para criar um cursor para executar comandos SQL
+            cursor = conexao.cursor()
+            # Aqui selecionamos os parâmetros que existem na tabela config_programa e também reforçamos a seleção do primeiro registro
+            cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global FROM config_programa WHERE id = 1')
+            # Guardamos o resultado da seleção em uma variável chamada configuração
+            configuracao = cursor.fetchone()
         # Se ocorrer algum erro ao buscar as configurações do banco de dados, imprimimos uma mensagem de erro
-        except Exception as e:
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
             # Retornamos para que a função não continue a ser executada
             return
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
         # Aqui verificamos se a estrutura de configuração foi encontrada no banco de dados, nesse caso a estrutura é a logo principal, logo do rodapé, fonte principal e tamanho da fonte
         if configuracao:
             self.logo_principal, self.logo_rodape, self.fonte_principal, self.tamanho_fonte, self.modo_global = configuracao
@@ -221,13 +228,23 @@ class JanelaLogin(QWidget):
             return
 
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT senha FROM usuarios WHERE usuario = ?', (usuario,))
-                resultado = cursor.fetchone()
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
+            resultado = cursor.fetchone()
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao verificar login: {e}")
             return
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
         if resultado:
             senha_hash = hashlib.sha256(senha.encode()).hexdigest()
@@ -241,13 +258,23 @@ class JanelaLogin(QWidget):
 
     def registrar_login(self, usuario):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                data_hora_atual = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-                cursor.execute('UPDATE usuarios SET ultimo_login = ? WHERE usuario = ?', (data_hora_atual, usuario))
-                conexao.commit()
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            data_hora_atual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('UPDATE usuarios SET ultimo_login = %s WHERE usuario = %s', (data_hora_atual, usuario))
+            conexao.commit()
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao registrar login: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def abrir_janela_principal(self):
         usuario_logado = self.obter_usuario_logado()
@@ -260,14 +287,24 @@ class JanelaLogin(QWidget):
 
     def obter_usuario_logado(self):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = ?', (self.input_usuario.text(),))
-                resultado = cursor.fetchone()
-                if resultado:
-                    return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = %s', (self.input_usuario.text(),))
+            resultado = cursor.fetchone()
+            if resultado:
+                return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao obter usuário logado: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
         return None
 
     def mostrar_erro(self, mensagem):
@@ -291,6 +328,7 @@ class JanelaLogin(QWidget):
 
     def atualizar_switch(self):
         estilo = self.modo.atualizar_switch()
+        self.switch_modo.setIcon(QIcon(estilo.get("icone", "")))
         self.switch_modo.setIcon(QIcon(estilo["icone"]))
         self.switch_modo.setStyleSheet(f"""
         QPushButton {{
@@ -336,13 +374,23 @@ class JanelaLogin(QWidget):
 
     def salvar_modo_global(self):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                modo_global = 1 if self.modo.modo_atual == 'escuro' else 0
-                cursor.execute('UPDATE config_programa SET modo_global = ? WHERE id = 1', (modo_global,))
-                conexao.commit()
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            modo_global = 1 if self.modo.modo_atual == 'escuro' else 0
+            cursor.execute('UPDATE config_programa SET modo_global = %s WHERE id = 1', (modo_global,))
+            conexao.commit()
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao salvar modo global: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 # Fim da classe JanelaLogin
 
 #Começo da classe JanelaPrincipal

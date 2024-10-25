@@ -1,18 +1,28 @@
-import sqlite3
+import mysql.connector
 import os
 import hashlib
-import sys
+import configparser
 
 class GerenciadorBancoDados:
-    def __init__(self, caminho_bd):
-        self.caminho_bd = caminho_bd
+    def __init__(self, host, user, password, database, port):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
         self.conn = None
 
     def criar_conexao(self):
         try:
-            self.conn = sqlite3.connect(self.caminho_bd)
-            print(f"Conectado ao banco de dados SQLite: {self.caminho_bd}")
-        except sqlite3.Error as e:
+            self.conn = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password,
+                database=self.database,
+                port=self.port
+            )
+            print(f"Conectado ao banco de dados MySQL: {self.database}")
+        except mysql.connector.Error as e:
             print(e)
             self.conn = None
 
@@ -22,99 +32,99 @@ class GerenciadorBancoDados:
             return
 
         try:
-            with self.conn:
-                cursor = self.conn.cursor()
+            cursor = self.conn.cursor()
 
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    usuario VARCHAR(255) NOT NULL UNIQUE,
+                    senha VARCHAR(255) NOT NULL,
+                    data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    nome_completo VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    is_admin TINYINT NOT NULL DEFAULT 0,
+                    ultimo_login TIMESTAMP NULL
+                )
+            ''')
+
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS scanner (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    hostname VARCHAR(255),
+                    mac_address VARCHAR(255),
+                    ip VARCHAR(255),
+                    portas TEXT
+                )
+            ''')
+
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS config_programa (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    logo_principal VARCHAR(255),
+                    logo_rodape VARCHAR(255),
+                    fonte_principal VARCHAR(255),
+                    tamanho_fonte INT,
+                    modo_global TINYINT NOT NULL DEFAULT 0
+                )
+            ''')
+
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS preferencias (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    fonte_preferida VARCHAR(255) NOT NULL
+                )
+            ''')
+
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pc_salvo (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    usuario_id INT NOT NULL,
+                    ip VARCHAR(255) NOT NULL,
+                    porta VARCHAR(255) NOT NULL,
+                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                )
+            ''')
+
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+
+            apoio_dir = os.path.join(script_dir, "apoio")
+            if not os.path.exists(apoio_dir):
+                os.makedirs(apoio_dir)
+
+            cursor.execute('''
+                INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global) VALUES (NOW(), %s, %s, %s, %s, %s)
+            ''', (
+                os.path.join(apoio_dir, "LOGO_R3.png"),
+                os.path.join(apoio_dir, "LOGO_R6.png"),
+                "Arial",
+                18,
+                0  # Valor padrão para modo_global
+            ))
+            print("Configuração padrão inserida com sucesso.")
+
+            cursor.execute('''
+                INSERT INTO preferencias (fonte_preferida) VALUES (%s)
+            ''', ("Arial",))
+            print("Preferências padrão inseridas com sucesso.")
+
+            admin_password = hashlib.sha256("teste".encode()).hexdigest()
+
+            cursor.execute('SELECT * FROM usuarios WHERE usuario = %s', ("admin",))
+            admin_exists = cursor.fetchone()
+
+            if not admin_exists:
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS usuarios (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario TEXT NOT NULL UNIQUE,
-                        senha TEXT NOT NULL,
-                        data_criacao TEXT NOT NULL,
-                        nome_completo TEXT NOT NULL,
-                        email TEXT NOT NULL,
-                        is_admin INTEGER NOT NULL DEFAULT 0,
-                        ultimo_login TEXT
-                    )
-                ''')
+                    INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin) VALUES (%s, %s, NOW(), %s, %s, %s)
+                ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
+                print("Usuário admin inserido com sucesso.")
+            else:
+                print("Usuário admin já existe.")
 
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS scanner (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        data TEXT NOT NULL,
-                        hostname TEXT,
-                        mac_address TEXT,
-                        ip TEXT,
-                        portas TEXT
-                    )
-                ''')
-
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS config_programa (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        data TEXT NOT NULL,
-                        logo_principal TEXT,
-                        logo_rodape TEXT,
-                        fonte_principal TEXT,
-                        tamanho_fonte INTEGER,
-                        modo_global INTEGER NOT NULL DEFAULT 0
-                    )
-                ''')
-
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS preferencias (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        fonte_preferida TEXT NOT NULL
-                    )
-                ''')
-
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS pc_salvo (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        usuario_id INTEGER NOT NULL,
-                        ip TEXT NOT NULL,
-                        porta TEXT NOT NULL,
-                        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-                    )
-                ''')
-
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-
-                apoio_dir = os.path.join(script_dir, "apoio")
-                if not os.path.exists(apoio_dir):
-                    os.makedirs(apoio_dir)
-
-                cursor.execute('''
-                    INSERT INTO config_programa (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global) VALUES (datetime('now'), ?, ?, ?, ?, ?)
-                ''', (
-                    os.path.join(apoio_dir, "LOGO_R3.png"),
-                    os.path.join(apoio_dir, "LOGO_R6.png"),
-                    "Arial",
-                    18,
-                    0  # Valor padrão para modo_global
-                ))
-                print("Configuração padrão inserida com sucesso.")
-
-                cursor.execute('''
-                    INSERT INTO preferencias (fonte_preferida) VALUES (?)
-                ''', ("Arial",))
-                print("Preferências padrão inseridas com sucesso.")
-
-                admin_password = hashlib.sha256("teste".encode()).hexdigest()
-
-                cursor.execute('SELECT * FROM usuarios WHERE usuario = ?', ("admin",))
-                admin_exists = cursor.fetchone()
-
-                if not admin_exists:
-                    cursor.execute('''
-                        INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin) VALUES (?, ?, datetime('now'), ?, ?, ?)
-                    ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
-                    print("Usuário admin inserido com sucesso.")
-                else:
-                    print("Usuário admin já existe.")
-
-                print("Tabelas criadas com sucesso.")
-        except sqlite3.Error as e:
+            self.conn.commit()
+            print("Tabelas criadas com sucesso.")
+        except mysql.connector.Error as e:
             print(e)
 
     def mostrar_estrutura_tabelas(self):
@@ -123,39 +133,38 @@ class GerenciadorBancoDados:
             return
 
         try:
-            with self.conn:
-                cursor = self.conn.cursor()
+            cursor = self.conn.cursor()
 
-                cursor.execute("PRAGMA table_info(usuarios)")
-                usuarios_info = cursor.fetchall()
-                print("Estrutura da tabela 'usuarios':")
-                for column in usuarios_info:
-                    print(column)
+            cursor.execute("DESCRIBE usuarios")
+            usuarios_info = cursor.fetchall()
+            print("Estrutura da tabela 'usuarios':")
+            for column in usuarios_info:
+                print(column)
 
-                cursor.execute("PRAGMA table_info(scanner)")
-                scanner_info = cursor.fetchall()
-                print("\nEstrutura da tabela 'scanner':")
-                for column in scanner_info:
-                    print(column)
+            cursor.execute("DESCRIBE scanner")
+            scanner_info = cursor.fetchall()
+            print("\nEstrutura da tabela 'scanner':")
+            for column in scanner_info:
+                print(column)
 
-                cursor.execute("PRAGMA table_info(config_programa)")
-                config_programa_info = cursor.fetchall()
-                print("\nEstrutura da tabela 'config_programa':")
-                for column in config_programa_info:
-                    print(column)
+            cursor.execute("DESCRIBE config_programa")
+            config_programa_info = cursor.fetchall()
+            print("\nEstrutura da tabela 'config_programa':")
+            for column in config_programa_info:
+                print(column)
 
-                cursor.execute("PRAGMA table_info(preferencias)")
-                preferencias_info = cursor.fetchall()
-                print("\nEstrutura da tabela 'preferencias':")
-                for column in preferencias_info:
-                    print(column)
+            cursor.execute("DESCRIBE preferencias")
+            preferencias_info = cursor.fetchall()
+            print("\nEstrutura da tabela 'preferencias':")
+            for column in preferencias_info:
+                print(column)
 
-                cursor.execute("PRAGMA table_info(pc_salvo)")
-                pc_salvo_info = cursor.fetchall()
-                print("\nEstrutura da tabela 'pc_salvo':")
-                for column in pc_salvo_info:
-                    print(column)
-        except sqlite3.Error as e:
+            cursor.execute("DESCRIBE pc_salvo")
+            pc_salvo_info = cursor.fetchall()
+            print("\nEstrutura da tabela 'pc_salvo':")
+            for column in pc_salvo_info:
+                print(column)
+        except mysql.connector.Error as e:
             print(e)
 
     def fechar_conexao(self):
@@ -164,20 +173,19 @@ class GerenciadorBancoDados:
             print("Conexão com o banco de dados fechada.")
 
 def principal():
-    if getattr(sys, 'frozen', False):
-        script_dir = os.path.dirname(sys.executable)
-    else:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    database = os.path.join(script_dir, "banco.db")
+    config = configparser.ConfigParser()
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+    config.read(config_path)
 
-    if os.path.exists(database):
-        os.remove(database)
-        print(f"Arquivo {database} existente removido.")
+    host = config['mysql']['host']
+    user = config['mysql']['user']
+    password = config['mysql']['password']
+    database = config['mysql']['database']
+    port = config['mysql'].getint('port')
 
-    gerenciador_bd = GerenciadorBancoDados(database)
+    gerenciador_bd = GerenciadorBancoDados(host, user, password, database, port)
     gerenciador_bd.criar_conexao()
-    if (gerenciador_bd.conn is not None):
+    if gerenciador_bd.conn is not None:
         gerenciador_bd.criar_tabelas()
         gerenciador_bd.mostrar_estrutura_tabelas()
         gerenciador_bd.fechar_conexao()
