@@ -287,6 +287,8 @@ class JanelaLogin(QWidget):
         botao_salvar.clicked.connect(lambda: self.salvar_nova_senha(usuario))
         layout.addWidget(botao_salvar)
 
+        self.input_confirmar_senha.returnPressed.connect(lambda: self.salvar_nova_senha(usuario))
+
         self.janela_alterar_senha.setLayout(layout)
         self.janela_alterar_senha.show()
 
@@ -317,7 +319,14 @@ class JanelaLogin(QWidget):
                 port=port
             )
             cursor = conexao.cursor()
+            cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
+            senha_atual_hash = cursor.fetchone()[0]
             nova_senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+
+            if nova_senha_hash == senha_atual_hash:
+                self.mostrar_erro("A nova senha não pode ser igual à senha atual.")
+                return
+
             cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now(), usuario))
             conexao.commit()
             QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
