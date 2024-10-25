@@ -109,7 +109,7 @@ class GerenciadorBancoDados:
             ''', ("Arial",))
             print("Preferências padrão inseridas com sucesso.")
 
-            admin_password = hashlib.sha256("teste".encode()).hexdigest()
+            admin_password = hashlib.sha256("admin".encode()).hexdigest()
 
             cursor.execute('SELECT * FROM usuarios WHERE usuario = %s', ("admin",))
             admin_exists = cursor.fetchone()

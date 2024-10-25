@@ -236,7 +236,7 @@ class JanelaLogin(QWidget):
                 port=port
             )
             cursor = conexao.cursor()
-            cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
+            cursor.execute('SELECT id, senha, ultimo_login FROM usuarios WHERE usuario = %s', (usuario,))
             resultado = cursor.fetchone()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao verificar login: {e}")
@@ -247,14 +247,89 @@ class JanelaLogin(QWidget):
                 conexao.close()
 
         if resultado:
+            usuario_id, senha_armazenada, ultimo_login = resultado
             senha_hash = hashlib.sha256(senha.encode()).hexdigest()
-            if senha_hash == resultado[0]:
-                self.registrar_login(usuario)
-                self.abrir_janela_principal()
+
+            if senha_hash == senha_armazenada:
+                if usuario_id == 1 and not ultimo_login:
+                    self.mostrar_tela_alterar_senha(usuario)
+                else:
+                    self.registrar_login(usuario)
+                    self.abrir_janela_principal()
             else:
                 QMessageBox.warning(self, 'Erro', 'Senha incorreta.')
         else:
             QMessageBox.warning(self, 'Erro', 'Usuário não encontrado.')
+
+    def mostrar_tela_alterar_senha(self, usuario):
+        self.janela_alterar_senha = QWidget()
+        self.janela_alterar_senha.setWindowTitle('Alterar Senha')
+        self.janela_alterar_senha.setGeometry(100, 100, 400, 300)
+        self.center(self.janela_alterar_senha)
+
+        layout = QVBoxLayout()
+
+        aviso = QLabel('Por favor, altere sua senha no primeiro login.', self.janela_alterar_senha)
+        aviso.setAlignment(Qt.AlignCenter)
+        layout.addWidget(aviso)
+
+        self.input_nova_senha = QLineEdit(self.janela_alterar_senha)
+        self.input_nova_senha.setEchoMode(QLineEdit.Password)
+        layout.addWidget(QLabel('Nova Senha:', self.janela_alterar_senha))
+        layout.addWidget(self.input_nova_senha)
+
+        self.input_confirmar_senha = QLineEdit(self.janela_alterar_senha)
+        self.input_confirmar_senha.setEchoMode(QLineEdit.Password)
+        layout.addWidget(QLabel('Confirmar Nova Senha:', self.janela_alterar_senha))
+        layout.addWidget(self.input_confirmar_senha)
+
+        botao_salvar = QPushButton('Salvar', self.janela_alterar_senha)
+        botao_salvar.clicked.connect(lambda: self.salvar_nova_senha(usuario))
+        layout.addWidget(botao_salvar)
+
+        self.janela_alterar_senha.setLayout(layout)
+        self.janela_alterar_senha.show()
+
+    def center(self, janela):
+        qr = janela.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        janela.move(qr.topLeft())
+
+    def salvar_nova_senha(self, usuario):
+        nova_senha = self.input_nova_senha.text()
+        confirmar_senha = self.input_confirmar_senha.text()
+
+        if not nova_senha or not confirmar_senha:
+            self.mostrar_erro("Todos os campos são obrigatórios.")
+            return
+
+        if nova_senha != confirmar_senha:
+            self.mostrar_erro("As senhas não coincidem.")
+            return
+
+        try:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            nova_senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+            cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now(), usuario))
+            conexao.commit()
+            QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
+            self.janela_alterar_senha.close()
+            self.registrar_login(usuario)
+            self.abrir_janela_principal()
+        except mysql.connector.Error as e:
+            self.mostrar_erro(f"Erro ao alterar senha: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def registrar_login(self, usuario):
         try:
@@ -768,10 +843,16 @@ class JanelaVerInformacoes(QWidget):
         data_selecionada = self.input_data.text()
 
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT * FROM scanner WHERE data LIKE ?', (f'%{data_selecionada}%',))
-                resultados = cursor.fetchall()
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('SELECT * FROM scanner WHERE data LIKE %s', (f'%{data_selecionada}%',))
+            resultados = cursor.fetchall()
 
             if not resultados:
                 self.mostrar_erro("Nenhuma informação encontrada para a data selecionada.")
@@ -796,8 +877,12 @@ class JanelaVerInformacoes(QWidget):
 
             self.janela_resultados.setLayout(layout)
             self.janela_resultados.show()
-        except Exception as e:
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar informações: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
@@ -1264,17 +1349,27 @@ class JanelaConfigPrograma(QWidget):
 
     def carregar_configuracoes(self):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte FROM config_programa WHERE id = 1')
-                configuracao = cursor.fetchone()
-                if configuracao:
-                    self.input_logo_principal.setText(configuracao[0])
-                    self.input_logo_rodape.setText(configuracao[1])
-                    self.combo_fonte_principal.setCurrentText(configuracao[2])
-                    self.combo_tamanho_fonte.setCurrentText(str(configuracao[3]))
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte FROM config_programa WHERE id = 1')
+            configuracao = cursor.fetchone()
+            if configuracao:
+                self.input_logo_principal.setText(configuracao[0])
+                self.input_logo_rodape.setText(configuracao[1])
+                self.combo_fonte_principal.setCurrentText(configuracao[2])
+                self.combo_tamanho_fonte.setCurrentText(str(configuracao[3]))
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def atualizar_preview_fonte(self):
         fonte = self.combo_fonte_principal.currentText()
@@ -1458,14 +1553,20 @@ class JanelaDashboard(QWidget):
 
     def atualizar_dados(self):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('''
-                    SELECT pc_salvo.id, usuarios.usuario, pc_salvo.ip, pc_salvo.porta
-                    FROM pc_salvo
-                    JOIN usuarios ON pc_salvo.usuario_id = usuarios.id
-                ''')
-                pcs_salvos = cursor.fetchall()
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('''
+                SELECT pc_salvo.id, usuarios.usuario, pc_salvo.ip, pc_salvo.porta
+                FROM pc_salvo
+                JOIN usuarios ON pc_salvo.usuario_id = usuarios.id
+            ''')
+            pcs_salvos = cursor.fetchall()
 
             self.dados_agrupados.clear()
             for pc in pcs_salvos:
@@ -1479,8 +1580,12 @@ class JanelaDashboard(QWidget):
                 sensor_thread.resultado_sensor.connect(self.processar_resultado_sensor)
                 sensor_thread.start()
                 self.sensor_threads.append(sensor_thread)
-        except Exception as e:
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao atualizar dados: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def processar_resultado_ping(self, usuario, ip, porta, specific_sensors, status):
         chave = f"{usuario} ({ip}:{porta})"
@@ -1597,16 +1702,26 @@ class JanelaConfigurarPCs(QWidget):
 
     def carregar_usuarios(self):
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, usuario FROM usuarios')
-                usuarios = cursor.fetchall()
-                for usuario in usuarios:
-                    item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]}")
-                    item.setData(Qt.UserRole, usuario[0])
-                    self.lista_usuarios.addItem(item)
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('SELECT id, usuario FROM usuarios')
+            usuarios = cursor.fetchall()
+            for usuario in usuarios:
+                item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]}")
+                item.setData(Qt.UserRole, usuario[0])
+                self.lista_usuarios.addItem(item)
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar usuários: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def salvar_pc(self):
         item_selecionado = self.lista_usuarios.currentItem()
@@ -1623,15 +1738,25 @@ class JanelaConfigurarPCs(QWidget):
             return
 
         try:
-            with sqlite3.connect('banco.db') as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('''
-                    INSERT INTO pc_salvo (usuario_id, ip, porta) VALUES (?, ?, ?)
-                ''', (usuario_id, ip, porta))
-                conexao.commit()
-                QMessageBox.information(self, 'Sucesso', 'PC salvo com sucesso.')
-        except Exception as e:
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            cursor.execute('''
+                INSERT INTO pc_salvo (usuario_id, ip, porta) VALUES (%s, %s, %s)
+            ''', (usuario_id, ip, porta))
+            conexao.commit()
+            QMessageBox.information(self, 'Sucesso', 'PC salvo com sucesso.')
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao salvar PC: {e}")
+        finally:
+            if conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def voltar_dashboard(self):
         self.parent_dashboard.show()
