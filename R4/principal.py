@@ -201,7 +201,6 @@ class JanelaLogin(QWidget):
         self.layout.addWidget(self.botao_login, alignment=Qt.AlignCenter)
 
         self.setLayout(self.layout)
-        self.adicionar_botao_modo()
 
         self.input_senha.returnPressed.connect(self.verificar_login)
 
@@ -211,6 +210,8 @@ class JanelaLogin(QWidget):
             self.pixmap_logo_rodape = QPixmap(self.logo_rodape)
             self.label_logo_rodape.setPixmap(self.pixmap_logo_rodape.scaled(200, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_rodape)
+
+        self.aplicar_modo()
 
     def verificar_login(self):
         usuario = self.input_usuario.text()
@@ -244,6 +245,7 @@ class JanelaLogin(QWidget):
                     self.mostrar_tela_alterar_senha(usuario)
                 else:
                     self.registrar_login(usuario)
+                    self.usuario_logado = self.obter_usuario_logado()
                     self.abrir_janela_principal()
             else:
                 QMessageBox.warning(self, 'Erro', 'Senha incorreta.')
@@ -372,43 +374,8 @@ class JanelaLogin(QWidget):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
 
-    def adicionar_botao_modo(self):
-        self.switch_modo = QPushButton(self)
-        self.switch_modo.setMaximumWidth(150)
-        self.switch_modo.setCheckable(True)
-        self.switch_modo.setChecked(self.modo.modo_atual == 'escuro')
-        self.switch_modo.clicked.connect(self.trocar_modo)
-        self.layout.addWidget(self.switch_modo, alignment=Qt.AlignRight)
-        self.atualizar_switch()
-
-    def trocar_modo(self):
-        self.modo.trocar_modo()
-        self.atualizar_switch()
-        self.salvar_modo_global()
-
-    def atualizar_switch(self):
+    def aplicar_modo(self):
         estilo = self.modo.atualizar_switch()
-        self.switch_modo.setIcon(QIcon(estilo.get("icone", "")))
-        self.switch_modo.setIcon(QIcon(estilo["icone"]))
-        self.switch_modo.setStyleSheet(f"""
-        QPushButton {{
-            background-color: {estilo["botao"]["background-color"]};
-            color: {estilo["botao"]["color"]};
-            border: {estilo["botao"]["border"]};
-            border-radius: {estilo["botao"]["border-radius"]};
-            padding: {estilo["botao"]["padding"]};
-            text-align: {estilo["botao"]["text-align"]};
-            padding-right: {estilo["botao"].get("padding-right", "0px")};
-            padding-left: {estilo["botao"].get("padding-left", "0px")};
-        }}
-        QPushButton:checked {{
-            background-color: {estilo["botao_checked"]["background-color"]};
-            color: {estilo["botao_checked"]["color"]};
-            text-align: {estilo["botao_checked"]["text-align"]};
-            padding-right: {estilo["botao_checked"].get("padding-right", "0px")};
-            padding-left: {estilo["botao_checked"].get("padding-left", "0px")};
-        }}
-        """)
         self.setStyleSheet(f"""
         QWidget {{
             background-color: {estilo["widget"]["background-color"]};
@@ -431,7 +398,16 @@ class JanelaLogin(QWidget):
         if self.fonte_padrao and self.tamanho_fonte_padrao:
             self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
 
-    def salvar_modo_global(self):
+#Começo da classe JanelaPrincipal
+class JanelaPrincipal(QWidget):
+    def __init__(self, usuario_logado, modo):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.modo = modo
+        self.carregar_preferencias_usuario()
+        self.inicializarUI()
+
+    def carregar_preferencias_usuario(self):
         try:
             with mysql.connector.connect(
                 host=host,
@@ -441,19 +417,12 @@ class JanelaLogin(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                modo_global = 1 if self.modo.modo_atual == 'escuro' else 0
-                cursor.execute('UPDATE config_programa SET modo_global = %s WHERE id = 1', (modo_global,))
-                conexao.commit()
+                cursor.execute('SELECT modo_tela FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
+                preferencia = cursor.fetchone()
+                if preferencia:
+                    self.modo.modo_atual = 'escuro' if preferencia[0] == 1 else 'claro'
         except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao salvar modo global: {e}")
-
-#Começo da classe JanelaPrincipal
-class JanelaPrincipal(QWidget):
-    def __init__(self, usuario_logado, modo):
-        super().__init__() 
-        self.usuario_logado = usuario_logado
-        self.modo = modo
-        self.inicializarUI()
+            self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
 
     def inicializarUI(self):
         self.setWindowTitle('Janela Principal')
@@ -556,6 +525,23 @@ class JanelaPrincipal(QWidget):
     def trocar_modo(self):
         self.modo.trocar_modo()
         self.atualizar_switch()
+        self.salvar_preferencia_modo()
+
+    def salvar_preferencia_modo(self):
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conexao:
+                cursor = conexao.cursor()
+                modo_tela = 1 if self.modo.modo_atual == 'escuro' else 0
+                cursor.execute('UPDATE preferenciais_usuarios SET modo_tela = %s WHERE usuario_id = %s', (modo_tela, self.usuario_logado['id']))
+                conexao.commit()
+        except mysql.connector.Error as e:
+            self.mostrar_erro(f"Erro ao salvar preferência de modo: {e}")
 
     def atualizar_switch(self):
         estilo = self.modo.atualizar_switch()
@@ -598,6 +584,10 @@ class JanelaPrincipal(QWidget):
             color: {estilo["label"]["color"]};
         }}
         """)
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
 #Fim da classe JanelaPrincipal
 
 #Começo da classe JanelaScannerRede
