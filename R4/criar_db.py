@@ -54,7 +54,9 @@ class GerenciadorBancoDados:
                         logo_rodape VARCHAR(255),
                         fonte_padrao VARCHAR(255),
                         tamanho_fonte_padrao INT,
-                        modo_global TINYINT NOT NULL DEFAULT 0
+                        modo_global TINYINT NOT NULL DEFAULT 0,
+                        icone_modo_escuro VARCHAR(255),
+                        icone_modo_claro VARCHAR(255)
                     )
                 ''')
 
@@ -90,14 +92,16 @@ class GerenciadorBancoDados:
 
                 if config_exists == 0:
                     cursor.execute('''
-                        INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global) 
-                        VALUES (1, NOW(), %s, %s, %s, %s, %s)
+                        INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global, icone_modo_escuro, icone_modo_claro) 
+                        VALUES (1, NOW(), %s, %s, %s, %s, %s, %s, %s)
                     ''', (
                         os.path.join(apoio_dir, "LOGO_R3.png"),
                         os.path.join(apoio_dir, "LOGO_R6.png"),
                         "Arial",
                         18,
-                        0
+                        0,
+                        os.path.join(apoio_dir, "night-mode.png"),
+                        os.path.join(apoio_dir, "sun-mode.png")
                     ))
                     print("Configuração padrão inserida com sucesso.")
                 else:

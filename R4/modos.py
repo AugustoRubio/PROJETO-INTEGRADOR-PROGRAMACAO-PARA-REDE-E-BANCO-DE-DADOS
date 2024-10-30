@@ -1,6 +1,41 @@
+import configparser
+import os
+
+import mysql.connector
+
 class Modo:
     def __init__(self):
         self.modo_atual = 'claro'
+        self.config = self.carregar_configuracao()
+        self.icone_modo_escuro = self.config['icone_modo_escuro']
+        self.icone_modo_claro = self.config['icone_modo_claro']
+
+    def carregar_configuracao(self):
+        config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+        config.read(config_path)
+
+        host = config['mysql']['host']
+        user = config['mysql']['user']
+        password = config['mysql']['password']
+        database = config['mysql']['database']
+        port = config['mysql'].getint('port')
+
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute('SELECT icone_modo_escuro, icone_modo_claro FROM config_programa WHERE id = 1')
+                config_data = cursor.fetchone()
+                return config_data
+        except mysql.connector.Error as e:
+            print(e)
+            return None
 
     def trocar_modo(self):
         if self.modo_atual == 'claro':
@@ -12,7 +47,7 @@ class Modo:
     def atualizar_switch(self):
         if self.modo_atual == 'escuro':
             estilo = {
-                "icone": 'apoio/sun-mode.png',
+                "icone": self.icone_modo_escuro,
                 "botao": {
                     "background-color": "#555555",
                     "color": "#FFFFFF",
@@ -44,7 +79,7 @@ class Modo:
             }
         else:
             estilo = {
-                "icone": 'apoio/night-mode.png',
+                "icone": self.icone_modo_claro,
                 "botao": {
                     "background-color": "#DDDDDD",
                     "color": "#000000",
