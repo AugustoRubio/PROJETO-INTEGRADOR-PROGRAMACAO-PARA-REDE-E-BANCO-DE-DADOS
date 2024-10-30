@@ -1273,6 +1273,20 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Tamanho da Fonte Global:'))
         layout.addWidget(self.combo_tamanho_fonte_padrao)
 
+        self.combo_fonte_usuario = QComboBox(self)
+        self.combo_fonte_usuario.setEditable(True)
+        self.combo_fonte_usuario.lineEdit().setReadOnly(True)
+        self.combo_fonte_usuario.lineEdit().setAlignment(Qt.AlignCenter)
+        layout.addWidget(QLabel('Fonte do Usuário:'))
+        layout.addWidget(self.combo_fonte_usuario)
+
+        self.combo_tamanho_fonte_usuario = QComboBox(self)
+        self.combo_tamanho_fonte_usuario.setEditable(True)
+        self.combo_tamanho_fonte_usuario.lineEdit().setReadOnly(True)
+        self.combo_tamanho_fonte_usuario.lineEdit().setAlignment(Qt.AlignCenter)
+        layout.addWidget(QLabel('Tamanho da Fonte do Usuário:'))
+        layout.addWidget(self.combo_tamanho_fonte_usuario)
+
         botao_salvar = QPushButton('Salvar', self)
         botao_salvar.clicked.connect(self.salvar_configuracoes)
         layout.addWidget(botao_salvar)
@@ -1284,6 +1298,8 @@ class JanelaConfigPrograma(QWidget):
         self.setLayout(layout)
         self.carregar_fontes()
         self.carregar_tamanhos_fonte()
+        self.carregar_fontes_usuario()
+        self.carregar_tamanhos_fonte_usuario()
         self.carregar_configuracoes()
 
     def center(self):
@@ -1338,6 +1354,19 @@ class JanelaConfigPrograma(QWidget):
                     self.input_logo_rodape.setText(configuracao[1])
                     self.combo_fonte_padrao.setCurrentText(configuracao[2])
                     self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[3]))
+
+                cursor.execute('SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
+                preferencia_usuario = cursor.fetchone()
+                if preferencia_usuario:
+                    fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado = preferencia_usuario
+                    if fonte_alterada:
+                        self.combo_fonte_usuario.setCurrentText(fonte_perso)
+                    else:
+                        self.combo_fonte_usuario.setCurrentText(configuracao[2])
+                    if tamanho_fonte_alterado:
+                        self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
+                    else:
+                        self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[3]))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
@@ -1362,12 +1391,55 @@ class JanelaConfigPrograma(QWidget):
             elif source == self.combo_tamanho_fonte_padrao.lineEdit():
                 self.combo_tamanho_fonte_padrao.showPopup()
         return super().eventFilter(source, event)
+    
+    def carregar_fontes_usuario(self):
+        fontes = QFontDatabase().families()
+        for fonte in fontes:
+            self.combo_fonte_usuario.addItem(fonte)
+            index = self.combo_fonte_usuario.findText(fonte)
+            self.combo_fonte_usuario.setItemData(index, QFont(fonte), Qt.FontRole)
+        self.combo_fonte_usuario.currentIndexChanged.connect(self.atualizar_preview_fonte_usuario)
+        self.combo_fonte_usuario.view().setMouseTracking(True)
+        self.combo_fonte_usuario.view().entered.connect(self.expandir_lista_fontes_usuario)
+        self.combo_fonte_usuario.lineEdit().installEventFilter(self)
+
+    def carregar_tamanhos_fonte_usuario(self):
+        for tamanho in range(1, 101):
+            self.combo_tamanho_fonte_usuario.addItem(str(tamanho))
+        self.combo_tamanho_fonte_usuario.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_usuario)
+        self.combo_tamanho_fonte_usuario.view().setMouseTracking(True)
+        self.combo_tamanho_fonte_usuario.view().entered.connect(self.expandir_lista_tamanhos_usuario)
+        self.combo_tamanho_fonte_usuario.lineEdit().installEventFilter(self)
+
+    def atualizar_preview_fonte_usuario(self):
+        fonte = self.combo_fonte_usuario.currentText()
+        self.combo_fonte_usuario.lineEdit().setFont(QFont(fonte))
+
+    def atualizar_preview_tamanho_fonte_usuario(self):
+        tamanho = self.combo_tamanho_fonte_usuario.currentText()
+        self.combo_tamanho_fonte_usuario.lineEdit().setFont(QFont(self.combo_fonte_usuario.currentText(), int(tamanho)))
+
+    def expandir_lista_fontes_usuario(self, _):
+        self.combo_fonte_usuario.showPopup()
+
+    def expandir_lista_tamanhos_usuario(self, _):
+        self.combo_tamanho_fonte_usuario.showPopup()
+
+    def eventFilter(self, source, event):
+        if event.type() == QEvent.MouseButtonPress:
+            if source == self.combo_fonte_usuario.lineEdit():
+                self.combo_fonte_usuario.showPopup()
+            elif source == self.combo_tamanho_fonte_usuario.lineEdit():
+                self.combo_tamanho_fonte_usuario.showPopup()
+        return super().eventFilter(source, event)
 
     def salvar_configuracoes(self):
         logo_principal = self.input_logo_principal.text()
         logo_rodape = self.input_logo_rodape.text()
         fonte_padrao = self.combo_fonte_padrao.currentText()
         tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText()
+        fonte_usuario = self.combo_fonte_usuario.currentText()
+        tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
 
         try:
             with mysql.connector.connect(
@@ -1383,6 +1455,13 @@ class JanelaConfigPrograma(QWidget):
                     SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s
                     WHERE id = 1
                 ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao))
+
+                cursor.execute('''
+                    UPDATE preferenciais_usuarios
+                    SET fonte_perso = %s, tamanho_fonte_perso = %s, fonte_alterada = %s, tamanho_fonte_alterado = %s
+                    WHERE usuario_id = %s
+                ''', (fonte_usuario, tamanho_fonte_usuario, 1, 1, self.usuario_logado['id']))
+
                 conexao.commit()
                 QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
                 self.voltar_janela_anterior()
@@ -1401,8 +1480,8 @@ class JanelaConfigPrograma(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Final da classe JanelaConfigPrograma
-        
+
+
 class PingThread(QThread):
     resultado_ping = pyqtSignal(str, str, str, dict, str)
 
