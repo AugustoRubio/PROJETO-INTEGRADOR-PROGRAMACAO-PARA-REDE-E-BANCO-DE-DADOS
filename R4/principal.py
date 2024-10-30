@@ -604,7 +604,11 @@ class JanelaScannerRede(QWidget):
         self.center()
 
         layout = QVBoxLayout()
-
+        
+        self.botao_ping = QPushButton('PING', self)
+        self.botao_ping.clicked.connect(self.abrir_janela_ping)
+        layout.addWidget(self.botao_ping)
+    
         self.botao_escanear_rede = QPushButton('Escanear a própria rede', self)
         self.botao_escanear_rede.clicked.connect(self.abrir_janela_opcoes_scanner)
         layout.addWidget(self.botao_escanear_rede)
@@ -624,6 +628,11 @@ class JanelaScannerRede(QWidget):
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
+
+    def abrir_janela_ping(self):
+        self.janela_ping = JanelaPing(self.usuario_logado, self.modo)
+        self.janela_ping.show()
+
     def abrir_janela_opcoes_scanner(self):
         self.janela_opcoes_scanner = JanelaOpcoesScanner(self.usuario_logado, self.modo)
         self.janela_opcoes_scanner.show()
@@ -644,6 +653,84 @@ class JanelaScannerRede(QWidget):
         self.show()
 #Fim da classe JanelaScannerRede
 
+#Inicio da classe JanelaPing
+class JanelaPing(QWidget):
+    def __init__(self, usuario_logado, modo):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.modo = modo
+        self.inicializarUI()
+
+    def inicializarUI(self):
+        self.setWindowTitle('Ping')
+        self.setGeometry(100, 100, 400, 300)
+        self.center()
+
+        layout = QVBoxLayout()
+
+        self.label_rede_atual = QLabel('Rede Atual: Obtendo...', self)
+        layout.addWidget(self.label_rede_atual)
+
+        self.input_ip = QLineEdit(self)
+        self.input_ip.setPlaceholderText('Digite o IP para fazer o PING')
+        layout.addWidget(self.input_ip)
+
+        self.botao_ping = QPushButton('PING', self)
+        self.botao_ping.clicked.connect(self.fazer_ping)
+        layout.addWidget(self.botao_ping)
+
+        self.label_resultado = QLabel('', self)
+        layout.addWidget(self.label_resultado)
+
+        self.botao_voltar = QPushButton('Voltar', self)
+        self.botao_voltar.clicked.connect(self.close)
+        layout.addWidget(self.botao_voltar)
+        
+        self.setLayout(layout)
+        self.atualizar_rede_atual()
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def atualizar_rede_atual(self):
+        try:
+            rede_atual = RedeAtual()
+            rede = rede_atual.obter_rede_atual()
+
+            if rede:
+                self.label_rede_atual.setText(f"Rede Atual: {rede}")
+            else:
+                self.label_rede_atual.setText("Erro ao obter rede")
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao atualizar rede atual: {e}")
+
+    def fazer_ping(self):
+        ip = self.input_ip.text()
+        if not ip:
+            self.mostrar_erro("Por favor, insira um IP.")
+            return
+
+        try:
+            ping = PingIP(ip)
+            resultado = ping.ping()
+            if resultado:
+                self.label_resultado.setText(f"PING para {ip} bem-sucedido.")
+            else:
+                self.label_resultado.setText(f"PING para {ip} falhou.")
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao fazer PING: {e}")
+
+    def voltar_menu_principal(self):
+        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
+        self.janela_principal.show()
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
+#Fim da classe JanelaPing
 #Inicio da classe JanelaOpcoesScanner
 class JanelaOpcoesScanner(QWidget):
     def __init__(self, usuario_logado, modo):
