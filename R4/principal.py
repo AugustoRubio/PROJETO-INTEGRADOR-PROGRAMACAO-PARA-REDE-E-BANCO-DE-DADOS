@@ -49,8 +49,6 @@ except ImportError:
         def obter_rede_atual(self):
             return None
 from datetime import datetime
-import locale
-locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
 #Importa as classes do arquivo usuarios.py, que cuida das funções de adicionar, editar, remover e listar usuários do banco de dados
 from usuarios import ConfigUsuarios
 #Importa as classes do arquivo config_programa.py, que cuida das funções de adicionar, editar e remover configurações do programa no banco de dados
@@ -320,7 +318,7 @@ class JanelaLogin(QWidget):
                     self.mostrar_erro("A nova senha não pode ser igual à senha atual.")
                     return
 
-                cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now().strftime('%d/%m/%Y %H:%M:%S'), usuario))
+                cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now(), usuario))
                 conexao.commit()
                 QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
                 self.janela_alterar_senha.close()
@@ -339,7 +337,7 @@ class JanelaLogin(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                data_hora_atual = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                data_hora_atual = datetime.now()
                 cursor.execute('UPDATE usuarios SET ultimo_login = %s WHERE usuario = %s', (data_hora_atual, usuario))
                 conexao.commit()
         except mysql.connector.Error as e:
@@ -849,7 +847,7 @@ class JanelaOpcoesScanner(QWidget):
             cursor.execute('''
                 INSERT INTO scanner (data, hostname, mac_address, ip, portas)
                 VALUES (%s, %s, %s, %s, %s)
-            ''', (datetime.now().strftime('%d/%m/%Y %H:%M:%S'), 'N/A', 'N/A', 'Nenhum IP encontrado', 'N/A'))
+            ''', (datetime.now(), 'N/A', 'N/A', 'Nenhum IP encontrado', 'N/A'))
             conexao.commit()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao salvar resultado vazio: {e}")
@@ -870,9 +868,14 @@ class JanelaOpcoesScanner(QWidget):
             cursor = conexao.cursor()
             for resultado in resultados:
                 cursor.execute('''
-                    INSERT INTO scanner (data, hostname, mac_address, ip, portas)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (datetime.now().strftime('%d/%m/%Y %H:%M:%S'), resultado[0], resultado[1], resultado[2], ', '.join(resultado[3])))
+                    SELECT COUNT(*) FROM scanner WHERE hostname = %s AND mac_address = %s AND ip = %s
+                ''', (resultado[0], resultado[1], resultado[2]))
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    cursor.execute('''
+                        INSERT INTO scanner (data, hostname, mac_address, ip, portas)
+                        VALUES (%s, %s, %s, %s, %s)
+                    ''', (datetime.now(), resultado[0], resultado[1], resultado[2], ', '.join(resultado[3])))
             conexao.commit()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao salvar resultados: {e}")
@@ -901,6 +904,10 @@ class JanelaOpcoesScanner(QWidget):
 
         self.janela_resultados.setLayout(layout)
         self.janela_resultados.show()
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication(sys.argv)
+        app.exec_()
 
         # Check if the scan is completed and show a message
         if hasattr(self, 'escaneamento_concluido') and self.escaneamento_concluido:
@@ -930,7 +937,7 @@ class JanelaVerInformacoes(QWidget):
         layout.addWidget(self.label_instrucoes)
 
         self.calendario = QCalendarWidget(self)
-        self.calendario.setSelectedDate(datetime.strptime(datetime.now().strftime('%d/%m/%Y %H:%M:%S'), '%d/%m/%Y %H:%M:%S').date())
+        self.calendario.setSelectedDate(datetime.now())
         self.calendario.clicked.connect(self.atualizar_data_selecionada)
         layout.addWidget(self.calendario)
 
@@ -957,7 +964,49 @@ class JanelaVerInformacoes(QWidget):
 
     def ver_informacoes_armazenadas(self):
         data_selecionada = self.input_data.text()
+        self.janela_resultados_data = JanelaResultadosData(self.usuario_logado, self.modo, data_selecionada)
+        self.janela_resultados_data.show()
 
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
+#Fim da classe JanelaVerInformacoes
+
+class JanelaResultadosData(QWidget):
+    def __init__(self, usuario_logado, modo, data_selecionada):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.modo = modo
+        self.data_selecionada = data_selecionada
+        self.inicializarUI()
+
+    def inicializarUI(self):
+        self.setWindowTitle(f'Resultados para {self.data_selecionada}')
+        self.setGeometry(100, 100, 800, 600)
+        self.center()
+
+        layout = QVBoxLayout()
+
+        self.tabela_resultados = QTableWidget(self)
+        self.tabela_resultados.setColumnCount(5)
+        self.tabela_resultados.setHorizontalHeaderLabels(['Data', 'Hostname', 'MAC Address', 'IP', 'Portas'])
+        layout.addWidget(self.tabela_resultados)
+
+        self.carregar_resultados()
+
+        botao_fechar = QPushButton('Fechar', self)
+        botao_fechar.clicked.connect(self.close)
+        layout.addWidget(botao_fechar)
+
+        self.setLayout(layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def carregar_resultados(self):
         try:
             with mysql.connector.connect(
                 host=host,
@@ -967,39 +1016,25 @@ class JanelaVerInformacoes(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('SELECT * FROM scanner WHERE DATE(data) = STR_TO_DATE(%s, "%%d/%%m/%%Y")', (data_selecionada,))
+                cursor.execute('SELECT * FROM scanner WHERE DATE(data) = %s', (datetime.strptime(self.data_selecionada, '%d/%m/%Y').date(),))
                 resultados = cursor.fetchall()
 
                 if not resultados:
                     self.mostrar_erro("Nenhuma informação encontrada para a data selecionada.")
                     return
 
-                self.janela_resultados = QWidget()
-                self.janela_resultados.setWindowTitle('Informações Armazenadas')
-                self.janela_resultados.setGeometry(100, 100, 600, 400)
-                layout = QVBoxLayout()
-
-                texto_resultados = "\n".join([
-                    f"ID: {r[0]} | Data: {r[1]} | Hostname: {r[2]} | MAC: {r[3]} | IP: {r[4]} | Portas: {r[5]}"
-                    for r in resultados
-                ])
-                label_resultados = QLabel(texto_resultados)
-                label_resultados.setAlignment(Qt.AlignTop)
-                layout.addWidget(label_resultados)
-
-                botao_fechar = QPushButton('Fechar', self.janela_resultados)
-                botao_fechar.clicked.connect(self.janela_resultados.close)
-                layout.addWidget(botao_fechar)
-
-                self.janela_resultados.setLayout(layout)
-                self.janela_resultados.show()
+                self.tabela_resultados.setRowCount(0)
+                for resultado in resultados:
+                    row_position = self.tabela_resultados.rowCount()
+                    self.tabela_resultados.insertRow(row_position)
+                    for column, data in enumerate(resultado):
+                        self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar informações: {e}")
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaVerInformacoes
 
 class JanelaConfigUsuarios(QWidget):
     def __init__(self, usuario_logado, modo):
@@ -1638,7 +1673,7 @@ class PingThread(QThread):
         self._last_ping_time = None
 
     def run(self):
-        current_time = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        current_time = datetime.now()
         if self._last_ping_time and (current_time - self._last_ping_time).seconds < 60:
             return
 

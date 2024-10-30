@@ -51,8 +51,8 @@ class ScannerRede:
                 if self.escaneamento_rapido and not self.portas_selecionadas:
                     resultados.append((nome_host, endereco_mac, endereco_ip, 'N/A'))
                 else:
-                    portas_abertas = ', '.join([f"{port}/ABERTA" if port.isdigit() and nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in self.portas_selecionadas if port]) or 'N/D'
-                    resultados.append((nome_host, endereco_mac, endereco_ip, portas_abertas))
+                    portas_abertas = ', '.join([f"{port}/ABERTA" if port.isdigit() and nm[host].has_tcp(int(port)) and nm[host]['tcp'][int(port)]['state'] == 'open' else f"{port}/FECHADA" for port in self.portas_selecionadas if port])
+                    resultados.append((nome_host, endereco_mac, endereco_ip, portas_abertas if portas_abertas else 'N/D'))
 
             # Guarda os resultados relevantes no banco de dados
             with mysql.connector.connect(
@@ -67,7 +67,7 @@ class ScannerRede:
                     cursor.execute('''
                         INSERT INTO scanner (data, hostname, mac_address, ip, portas)
                         VALUES (%s, %s, %s, %s, %s)
-                    ''', (datetime.now().strftime('%d/%m/%Y %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
+                    ''', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
                 conn.commit()
 
             self.escaneamento_concluido = True  # Marca o escaneamento como concluído
