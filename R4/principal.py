@@ -128,6 +128,7 @@ class JanelaLogin(QWidget):
         self.modo = Modo()
         self.carregar_configuracoes()
         self.inicializarUI()
+        self.timer = QTimer(self)
 
     def carregar_configuracoes(self):
         try:
@@ -645,10 +646,6 @@ class JanelaScannerRede(QWidget):
         self.janela_principal.show()
         self.close()
     def closeEvent(self, event):
-        self.timer.stop()
-        for thread in self.findChildren(PingThread):
-            thread.stop()
-            thread.wait()
         self.voltar_menu_principal()
         event.accept()
 
