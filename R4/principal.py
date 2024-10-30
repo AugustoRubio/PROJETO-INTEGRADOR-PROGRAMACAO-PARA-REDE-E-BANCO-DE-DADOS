@@ -140,14 +140,14 @@ class JanelaLogin(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte, modo_global FROM config_programa WHERE id = 1')
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
                 configuracao = cursor.fetchone()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
             return
 
         if configuracao:
-            self.logo_principal, self.logo_rodape, self.fonte_padrao, self.tamanho_fonte, self.modo_global = configuracao
+            self.logo_principal, self.logo_rodape, self.fonte_padrao, self.tamanho_fonte_padrao, self.modo_global = configuracao
             self.modo.modo_atual = 'escuro' if self.modo_global == 1 else 'claro'
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
@@ -171,8 +171,8 @@ class JanelaLogin(QWidget):
                 self.label_logo_principal.setPixmap(self.pixmap_logo_principal.scaled(self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_principal)
 
-        if self.fonte_padrao and self.tamanho_fonte:
-            self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte))
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
 
         self.label_usuario = QLabel('Usuário:', self)
         self.label_usuario.setAlignment(Qt.AlignCenter)
@@ -414,7 +414,7 @@ class JanelaLogin(QWidget):
             background-color: {estilo["widget"]["background-color"]};
             color: {estilo["widget"]["color"]};
             font-family: {self.fonte_padrao};
-            font-size: {self.tamanho_fonte}px;
+            font-size: {self.tamanho_fonte_padrao}px;
         }}
         QPushButton {{
             background-color: {estilo["botao"]["background-color"]};
@@ -428,8 +428,8 @@ class JanelaLogin(QWidget):
             color: {estilo["label"]["color"]};
         }}
         """)
-        if self.fonte_padrao and self.tamanho_fonte:
-            self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte))
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
 
     def salvar_modo_global(self):
         try:
@@ -1266,12 +1266,12 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Fonte Padrão:'))
         layout.addWidget(self.combo_fonte_padrao)
 
-        self.combo_tamanho_fonte = QComboBox(self)
-        self.combo_tamanho_fonte.setEditable(True)
-        self.combo_tamanho_fonte.lineEdit().setReadOnly(True)
-        self.combo_tamanho_fonte.lineEdit().setAlignment(Qt.AlignCenter)
+        self.combo_tamanho_fonte_padrao = QComboBox(self)
+        self.combo_tamanho_fonte_padrao.setEditable(True)
+        self.combo_tamanho_fonte_padrao.lineEdit().setReadOnly(True)
+        self.combo_tamanho_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
         layout.addWidget(QLabel('Tamanho da Fonte:'))
-        layout.addWidget(self.combo_tamanho_fonte)
+        layout.addWidget(self.combo_tamanho_fonte_padrao)
 
         botao_salvar = QPushButton('Salvar', self)
         botao_salvar.clicked.connect(self.salvar_configuracoes)
@@ -1315,11 +1315,11 @@ class JanelaConfigPrograma(QWidget):
 
     def carregar_tamanhos_fonte(self):
         for tamanho in range(1, 101):
-            self.combo_tamanho_fonte.addItem(str(tamanho))
-        self.combo_tamanho_fonte.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte)
-        self.combo_tamanho_fonte.view().setMouseTracking(True)
-        self.combo_tamanho_fonte.view().entered.connect(self.expandir_lista_tamanhos)
-        self.combo_tamanho_fonte.lineEdit().installEventFilter(self)
+            self.combo_tamanho_fonte_padrao.addItem(str(tamanho))
+        self.combo_tamanho_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_padrao)
+        self.combo_tamanho_fonte_padrao.view().setMouseTracking(True)
+        self.combo_tamanho_fonte_padrao.view().entered.connect(self.expandir_lista_tamanhos)
+        self.combo_tamanho_fonte_padrao.lineEdit().installEventFilter(self)
 
     def carregar_configuracoes(self):
         try:
@@ -1331,13 +1331,13 @@ class JanelaConfigPrograma(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte FROM config_programa WHERE id = 1')
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao FROM config_programa WHERE id = 1')
                 configuracao = cursor.fetchone()
                 if configuracao:
                     self.input_logo_principal.setText(configuracao[0])
                     self.input_logo_rodape.setText(configuracao[1])
                     self.combo_fonte_padrao.setCurrentText(configuracao[2])
-                    self.combo_tamanho_fonte.setCurrentText(str(configuracao[3]))
+                    self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[3]))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
@@ -1345,29 +1345,29 @@ class JanelaConfigPrograma(QWidget):
         fonte = self.combo_fonte_padrao.currentText()
         self.combo_fonte_padrao.lineEdit().setFont(QFont(fonte))
 
-    def atualizar_preview_tamanho_fonte(self):
-        tamanho = self.combo_tamanho_fonte.currentText()
-        self.combo_tamanho_fonte.lineEdit().setFont(QFont(self.combo_fonte_padrao.currentText(), int(tamanho)))
+    def atualizar_preview_tamanho_fonte_padrao(self):
+        tamanho = self.combo_tamanho_fonte_padrao.currentText()
+        self.combo_tamanho_fonte_padrao.lineEdit().setFont(QFont(self.combo_fonte_padrao.currentText(), int(tamanho)))
 
     def expandir_lista_fontes(self, _):
         self.combo_fonte_padrao.showPopup()
 
     def expandir_lista_tamanhos(self, _):
-        self.combo_tamanho_fonte.showPopup()
+        self.combo_tamanho_fonte_padrao.showPopup()
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.MouseButtonPress:
             if source == self.combo_fonte_padrao.lineEdit():
                 self.combo_fonte_padrao.showPopup()
-            elif source == self.combo_tamanho_fonte.lineEdit():
-                self.combo_tamanho_fonte.showPopup()
+            elif source == self.combo_tamanho_fonte_padrao.lineEdit():
+                self.combo_tamanho_fonte_padrao.showPopup()
         return super().eventFilter(source, event)
 
     def salvar_configuracoes(self):
         logo_principal = self.input_logo_principal.text()
         logo_rodape = self.input_logo_rodape.text()
         fonte_padrao = self.combo_fonte_padrao.currentText()
-        tamanho_fonte = self.combo_tamanho_fonte.currentText()
+        tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText()
 
         try:
             with mysql.connector.connect(
@@ -1380,9 +1380,9 @@ class JanelaConfigPrograma(QWidget):
                 cursor = conexao.cursor()
                 cursor.execute('''
                     UPDATE config_programa
-                    SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte = %s
+                    SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s
                     WHERE id = 1
-                ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte))
+                ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao))
                 conexao.commit()
                 QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
                 self.voltar_janela_anterior()

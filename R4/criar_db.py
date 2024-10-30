@@ -54,7 +54,7 @@ class GerenciadorBancoDados:
                         logo_principal VARCHAR(255),
                         logo_rodape VARCHAR(255),
                         fonte_padrao VARCHAR(255),
-                        tamanho_fonte INT,
+                        tamanho_fonte_padrao INT,
                         modo_global TINYINT NOT NULL DEFAULT 0
                     )
                 ''')
@@ -74,7 +74,7 @@ class GerenciadorBancoDados:
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         usuario_id INT NOT NULL,
                         fonte_principal VARCHAR(255) NOT NULL,
-                        tamanho_fonte INT,
+                        tamanho_fonte_perso INT,
                         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                     )
                 ''')
@@ -89,7 +89,7 @@ class GerenciadorBancoDados:
 
                 if config_exists == 0:
                     cursor.execute('''
-                        INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_padrao, tamanho_fonte, modo_global) 
+                        INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global) 
                         VALUES (1, NOW(), %s, %s, %s, %s, %s)
                     ''', (
                         os.path.join(apoio_dir, "LOGO_R3.png"),
@@ -114,7 +114,7 @@ class GerenciadorBancoDados:
                     ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
                     admin_id = cursor.lastrowid
                     cursor.execute('''
-                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_principal, tamanho_fonte) 
+                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_principal, tamanho_fonte_perso) 
                         VALUES (%s, %s, %s)
                     ''', (admin_id, "Arial", 18))
                     print("Usuário admin e preferências inseridos com sucesso.")
