@@ -78,6 +78,7 @@ class GerenciadorBancoDados:
                         tamanho_fonte_perso INT,
                         fonte_alterada TINYINT NOT NULL DEFAULT 0,
                         tamanho_fonte_alterado TINYINT NOT NULL DEFAULT 0,
+                        modo_tela TINYINT NOT NULL DEFAULT 0,
                         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                     )
                 ''')
@@ -119,9 +120,9 @@ class GerenciadorBancoDados:
                     ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
                     admin_id = cursor.lastrowid
                     cursor.execute('''
-                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado) 
-                        VALUES (%s, %s, %s, %s, %s)
-                    ''', (admin_id, "Arial", 18, 0, 0))
+                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado, modo_tela) 
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    ''', (admin_id, "Arial", 18, 0, 0, 0))
                     print("Usuário admin e preferências inseridos com sucesso.")
                 else:
                     print("Usuário admin já existe.")

@@ -1287,6 +1287,11 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Tamanho da Fonte do Usuário:'))
         layout.addWidget(self.combo_tamanho_fonte_usuario)
 
+        self.combo_modo_padrao = QComboBox(self)
+        self.combo_modo_padrao.addItems(['Claro', 'Escuro'])
+        layout.addWidget(QLabel('Modo Padrão:'))
+        layout.addWidget(self.combo_modo_padrao)
+
         botao_salvar = QPushButton('Salvar', self)
         botao_salvar.clicked.connect(self.salvar_configuracoes)
         layout.addWidget(botao_salvar)
@@ -1347,13 +1352,14 @@ class JanelaConfigPrograma(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao FROM config_programa WHERE id = 1')
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
                 configuracao = cursor.fetchone()
                 if configuracao:
                     self.input_logo_principal.setText(configuracao[0])
                     self.input_logo_rodape.setText(configuracao[1])
                     self.combo_fonte_padrao.setCurrentText(configuracao[2])
                     self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[3]))
+                    self.combo_modo_padrao.setCurrentIndex(configuracao[4])
 
                 cursor.execute('SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
                 preferencia_usuario = cursor.fetchone()
@@ -1440,6 +1446,7 @@ class JanelaConfigPrograma(QWidget):
         tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText()
         fonte_usuario = self.combo_fonte_usuario.currentText()
         tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
+        modo_padrao = self.combo_modo_padrao.currentIndex()
 
         try:
             with mysql.connector.connect(
@@ -1452,9 +1459,9 @@ class JanelaConfigPrograma(QWidget):
                 cursor = conexao.cursor()
                 cursor.execute('''
                     UPDATE config_programa
-                    SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s
+                    SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s, modo_global = %s
                     WHERE id = 1
-                ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao))
+                ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
 
                 cursor.execute('''
                     UPDATE preferenciais_usuarios
