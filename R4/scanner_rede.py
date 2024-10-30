@@ -1,14 +1,22 @@
 import subprocess
 import nmap
-import sqlite3
+import mysql.connector
 from datetime import datetime
 import socket
 import ipaddress
-import os
+import locale
 
-#Inicio da classe ScannerRede
+# Define a localidade para PT-BR
+locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
+
+# Inicio da classe ScannerRede
 class ScannerRede:
-    def __init__(self, portas_selecionadas=None, escaneamento_rapido=True):
+    def __init__(self, host, user, password, database, port, portas_selecionadas=None, escaneamento_rapido=True):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.database = database
+        self.port = port
         self.portas_selecionadas = portas_selecionadas if portas_selecionadas else []
         self.escaneamento_rapido = escaneamento_rapido
         self.escaneamento_concluido = False  # Variável para indicar se o escaneamento foi concluído
@@ -47,13 +55,18 @@ class ScannerRede:
                     resultados.append((nome_host, endereco_mac, endereco_ip, portas_abertas))
 
             # Guarda os resultados relevantes no banco de dados
-            caminho_db = os.path.join(os.path.dirname(__file__), 'banco.db')
-            with sqlite3.connect(caminho_db) as conn:
+            with mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password,
+                database=self.database,
+                port=self.port
+            ) as conn:
                 cursor = conn.cursor()
                 for resultado in resultados:
                     cursor.execute('''
                         INSERT INTO scanner (data, hostname, mac_address, ip, portas)
-                        VALUES (?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s)
                     ''', (datetime.now().strftime('%d/%m/%Y %H:%M:%S'), resultado[0], resultado[1], resultado[2], resultado[3]))
                 conn.commit()
 
@@ -65,9 +78,9 @@ class ScannerRede:
             print(f"Erro ao executar o comando nmap: {e}")
             self.escaneamento_concluido = False  # Marca o escaneamento como não concluído em caso de erro
             return None
-#Fim da classe ScannerRede
+# Fim da classe ScannerRede
 
-#Inicio da classe mostra a rede atual
+# Inicio da classe mostra a rede atual
 class RedeAtual:
     def __init__(self):
         pass
@@ -82,7 +95,7 @@ class RedeAtual:
         except Exception as e:
             print(f"Erro ao obter a rede atual: {e}")
             return None
-#Fim da classe RedeAtual
+# Fim da classe RedeAtual
 
 class PingIP:
     def __init__(self, ip):
