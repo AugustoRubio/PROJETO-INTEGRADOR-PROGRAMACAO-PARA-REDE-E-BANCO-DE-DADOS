@@ -53,7 +53,7 @@ class GerenciadorBancoDados:
                         data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         logo_principal VARCHAR(255),
                         logo_rodape VARCHAR(255),
-                        fonte_principal VARCHAR(255),
+                        fonte_padrao VARCHAR(255),
                         tamanho_fonte INT,
                         modo_global TINYINT NOT NULL DEFAULT 0
                     )
@@ -89,7 +89,7 @@ class GerenciadorBancoDados:
 
                 if config_exists == 0:
                     cursor.execute('''
-                        INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global) 
+                        INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_padrao, tamanho_fonte, modo_global) 
                         VALUES (1, NOW(), %s, %s, %s, %s, %s)
                     ''', (
                         os.path.join(apoio_dir, "LOGO_R3.png"),
