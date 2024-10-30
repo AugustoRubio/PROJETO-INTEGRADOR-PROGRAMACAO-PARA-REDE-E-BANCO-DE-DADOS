@@ -93,13 +93,8 @@ class VerificadorBancoDados:
 
     def verificar_ou_criar_bd(self):
         gerenciador_bd = GerenciadorBancoDados(self.host, self.user, self.password, self.database, self.port)
-        gerenciador_bd.criar_conexao()
-        if gerenciador_bd.conn is not None:
-            gerenciador_bd.criar_tabelas()
-            gerenciador_bd.fechar_conexao()
-            print(f"Banco de dados verificado/criado com sucesso: {self.database}")
-        else:
-            print("Erro! Não foi possível criar a conexão com o banco de dados.")
+        gerenciador_bd.criar_tabelas()
+        print(f"Banco de dados verificado/criado com sucesso: {self.database}")
 
 # Aqui verificamos se o script foi executado pelo arquivo gerado pelo PyInstaller ou se foi executado diretamente pelo arquivo principal.py
 # Se o script foi executado pelo arquivo gerado pelo PyInstaller, usamos o caminho do executável, para que seja possível acessar os arquivos necessários como a pasta de apoio
@@ -128,68 +123,41 @@ verificador_bd.verificar_ou_criar_bd()
 #Aqui criamos a aplicação gráfica.
 #A aplicação é criada usando a classe QWidget que é a classe base para todos os widgets
 class JanelaLogin(QWidget):
-    # Inicializamos a classe com a função __init__ e permitimos que a classe herde as propriedades da classe QWidget
     def __init__(self):
-        # Usamos a função super() para acessar a classe pai (QWidgets) e inicializamos a classe pai
         super().__init__()
-        # Aqui precisamos já inicializar a instância da classe Modo para que possamos usar a função de trocar o modo de cores das janelas
-        # Como a classe Modo é usada em todas as janelas, precisamos inicializar ela aqui para que possamos usar a função de trocar o modo de cores em todas as janelas
         self.modo = Modo()
-        # Aqui precisamos buscar todas as configurações do programa no banco de dados
         self.carregar_configuracoes()
-        # Usamos a função inicializarUI para inicializar todos os componentes da interface gráfica
         self.inicializarUI()
 
     def carregar_configuracoes(self):
         try:
-            # Conectamos dentro do banco de dados com o alias dessa conexão sendo o nome conexao
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            # Usamos o alias anterior da conexão para criar um cursor para executar comandos SQL
-            cursor = conexao.cursor()
-            # Aqui selecionamos os parâmetros que existem na tabela config_programa e também reforçamos a seleção do primeiro registro
-            cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global FROM config_programa WHERE id = 1')
-            # Guardamos o resultado da seleção em uma variável chamada configuração
-            configuracao = cursor.fetchone()
-        # Se ocorrer algum erro ao buscar as configurações do banco de dados, imprimimos uma mensagem de erro
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte, modo_global FROM config_programa WHERE id = 1')
+                configuracao = cursor.fetchone()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
-            # Retornamos para que a função não continue a ser executada
             return
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
-        # Aqui verificamos se a estrutura de configuração foi encontrada no banco de dados, nesse caso a estrutura é a logo principal, logo do rodapé, fonte principal e tamanho da fonte
+
         if configuracao:
             self.logo_principal, self.logo_rodape, self.fonte_principal, self.tamanho_fonte, self.modo_global = configuracao
-            # Definir o modo inicial com base na configuração do banco de dados
             self.modo.modo_atual = 'escuro' if self.modo_global == 1 else 'claro'
-        # Se a estrutura de configuração não for encontrada no banco de dados, imprimimos uma mensagem de erro
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
-            # Retornamos para que a função não continue a ser executada
             return
 
-    # Vamos declarar a função inicializarUI que será responsável por inicializar todos os componentes da interface gráfica e definir o layout da janela
     def inicializarUI(self):
-        # Definimos o título da janela
         self.setWindowTitle('Login')
-        # Definimos a geometria da janela em pixels (x, y, largura, altura)
         self.setGeometry(100, 100, 800, 600)
-        # Forçamos a janela a ser maximizada quando aberta
         self.setWindowState(Qt.WindowMaximized)
-
-        # Aqui definimos o layout da janela como um QVBoxLayout que organiza os widgets verticalmente.
-        # Isso permite organizar os widgets na janela de cima para baixo.
         self.layout = QVBoxLayout()
 
-        # Adicionar logo principal
         if self.logo_principal:
             self.label_logo_principal = QLabel(self)
             self.label_logo_principal.setAlignment(Qt.AlignCenter)
@@ -202,7 +170,6 @@ class JanelaLogin(QWidget):
                 self.label_logo_principal.setPixmap(self.pixmap_logo_principal.scaled(self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_principal)
 
-        # Definir fonte
         if self.fonte_principal and self.tamanho_fonte:
             self.setFont(QFont(self.fonte_principal, self.tamanho_fonte))
 
@@ -228,7 +195,7 @@ class JanelaLogin(QWidget):
 
         self.botao_login = QPushButton('Login', self)
         self.botao_login.setMaximumWidth(300)
-        self.botao_login.setStyleSheet("margin-left: auto; margin-right: auto;")  # Centraliza o botão
+        self.botao_login.setStyleSheet("margin-left: auto; margin-right: auto;")
         self.botao_login.clicked.connect(self.verificar_login)
         self.layout.addWidget(self.botao_login, alignment=Qt.AlignCenter)
 
@@ -237,7 +204,6 @@ class JanelaLogin(QWidget):
 
         self.input_senha.returnPressed.connect(self.verificar_login)
 
-        # Adicionar logo do rodapé
         if self.logo_rodape:
             self.label_logo_rodape = QLabel(self)
             self.label_logo_rodape.setAlignment(Qt.AlignCenter)
@@ -254,23 +220,19 @@ class JanelaLogin(QWidget):
             return
 
         try:
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            cursor = conexao.cursor()
-            cursor.execute('SELECT id, senha, ultimo_login FROM usuarios WHERE usuario = %s', (usuario,))
-            resultado = cursor.fetchone()
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, senha, ultimo_login FROM usuarios WHERE usuario = %s', (usuario,))
+                resultado = cursor.fetchone()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao verificar login: {e}")
             return
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
 
         if resultado:
             usuario_id, senha_armazenada, ultimo_login = resultado
@@ -337,84 +299,72 @@ class JanelaLogin(QWidget):
             return
 
         try:
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            cursor = conexao.cursor()
-            cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
-            senha_atual_hash = cursor.fetchone()[0]
-            nova_senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
+                senha_atual_hash = cursor.fetchone()[0]
+                nova_senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
 
-            if nova_senha_hash == senha_atual_hash:
-                self.mostrar_erro("A nova senha não pode ser igual à senha atual.")
-                return
+                if nova_senha_hash == senha_atual_hash:
+                    self.mostrar_erro("A nova senha não pode ser igual à senha atual.")
+                    return
 
-            cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now(), usuario))
-            conexao.commit()
-            QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
-            self.janela_alterar_senha.close()
-            self.registrar_login(usuario)
-            self.abrir_janela_principal()
+                cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now(), usuario))
+                conexao.commit()
+                QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
+                self.janela_alterar_senha.close()
+                self.registrar_login(usuario)
+                self.abrir_janela_principal()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao alterar senha: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
 
     def registrar_login(self, usuario):
         try:
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            cursor = conexao.cursor()
-            data_hora_atual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute('UPDATE usuarios SET ultimo_login = %s WHERE usuario = %s', (data_hora_atual, usuario))
-            conexao.commit()
+            ) as conexao:
+                cursor = conexao.cursor()
+                data_hora_atual = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                cursor.execute('UPDATE usuarios SET ultimo_login = %s WHERE usuario = %s', (data_hora_atual, usuario))
+                conexao.commit()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao registrar login: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
 
     def abrir_janela_principal(self):
         usuario_logado = self.obter_usuario_logado()
         if usuario_logado:
             self.janela_principal = JanelaPrincipal(usuario_logado, self.modo)
             self.janela_principal.show()
-            self.hide()  # Hide the login window after successful login
+            self.hide()
         else:
             self.mostrar_erro('Erro ao obter informações do usuário logado.')
 
     def obter_usuario_logado(self):
         try:
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            cursor = conexao.cursor()
-            cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = %s', (self.input_usuario.text(),))
-            resultado = cursor.fetchone()
-            if resultado:
-                return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = %s', (self.input_usuario.text(),))
+                resultado = cursor.fetchone()
+                if resultado:
+                    return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao obter usuário logado: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
         return None
 
     def mostrar_erro(self, mensagem):
@@ -422,7 +372,6 @@ class JanelaLogin(QWidget):
         self.show()
 
     def adicionar_botao_modo(self):
-        # Adicionar switch de modo claro/escuro com ícones
         self.switch_modo = QPushButton(self)
         self.switch_modo.setMaximumWidth(150)
         self.switch_modo.setCheckable(True)
@@ -478,30 +427,24 @@ class JanelaLogin(QWidget):
             color: {estilo["label"]["color"]};
         }}
         """)
-        # Manter a fonte e o tamanho da fonte
         if self.fonte_principal and self.tamanho_fonte:
             self.setFont(QFont(self.fonte_principal, self.tamanho_fonte))
 
     def salvar_modo_global(self):
         try:
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            cursor = conexao.cursor()
-            modo_global = 1 if self.modo.modo_atual == 'escuro' else 0
-            cursor.execute('UPDATE config_programa SET modo_global = %s WHERE id = 1', (modo_global,))
-            conexao.commit()
+            ) as conexao:
+                cursor = conexao.cursor()
+                modo_global = 1 if self.modo.modo_atual == 'escuro' else 0
+                cursor.execute('UPDATE config_programa SET modo_global = %s WHERE id = 1', (modo_global,))
+                conexao.commit()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao salvar modo global: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
-# Fim da classe JanelaLogin
 
 #Começo da classe JanelaPrincipal
 class JanelaPrincipal(QWidget):
