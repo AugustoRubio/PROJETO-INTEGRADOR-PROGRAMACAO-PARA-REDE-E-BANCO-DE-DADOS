@@ -35,7 +35,7 @@ DependencyChecker.check_and_install_dependencies()
 import sys
 import mysql.connector
 import hashlib
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QFileDialog
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer
 
@@ -1225,13 +1225,12 @@ class JanelaConfigUsuarios(QWidget):
         self.show()
 # Fim da classe JanelaConfigUsuarios
 
-# Define the JanelaConfigPrograma class
+#Inicio da classe JanelaConfigPrograma
 class JanelaConfigPrograma(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
-        self.config_db = ConfiguracaoProgramaDB('banco.db', QApplication.instance())
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -1294,12 +1293,12 @@ class JanelaConfigPrograma(QWidget):
         self.move(qr.topLeft())
 
     def selecionar_logo_principal(self):
-        caminho_logo = self.config_db.selecionar_imagem()
+        caminho_logo = QFileDialog.getOpenFileName(self, 'Selecionar Logo Principal', '', 'Images (*.png *.jpg *.bmp)')[0]
         if caminho_logo:
             self.input_logo_principal.setText(caminho_logo)
 
     def selecionar_logo_rodape(self):
-        caminho_logo = self.config_db.selecionar_imagem()
+        caminho_logo = QFileDialog.getOpenFileName(self, 'Selecionar Logo Rodapé', '', 'Images (*.png *.jpg *.bmp)')[0]
         if caminho_logo:
             self.input_logo_rodape.setText(caminho_logo)
 
@@ -1324,27 +1323,23 @@ class JanelaConfigPrograma(QWidget):
 
     def carregar_configuracoes(self):
         try:
-            conexao = mysql.connector.connect(
+            with mysql.connector.connect(
                 host=host,
                 user=user,
                 password=password,
                 database=database,
                 port=port
-            )
-            cursor = conexao.cursor()
-            cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte FROM config_programa WHERE id = 1')
-            configuracao = cursor.fetchone()
-            if configuracao:
-                self.input_logo_principal.setText(configuracao[0])
-                self.input_logo_rodape.setText(configuracao[1])
-                self.combo_fonte_principal.setCurrentText(configuracao[2])
-                self.combo_tamanho_fonte.setCurrentText(str(configuracao[3]))
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_principal, tamanho_fonte FROM config_programa WHERE id = 1')
+                configuracao = cursor.fetchone()
+                if configuracao:
+                    self.input_logo_principal.setText(configuracao[0])
+                    self.input_logo_rodape.setText(configuracao[1])
+                    self.combo_fonte_principal.setCurrentText(configuracao[2])
+                    self.combo_tamanho_fonte.setCurrentText(str(configuracao[3]))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
 
     def atualizar_preview_fonte(self):
         fonte = self.combo_fonte_principal.currentText()
@@ -1354,10 +1349,10 @@ class JanelaConfigPrograma(QWidget):
         tamanho = self.combo_tamanho_fonte.currentText()
         self.combo_tamanho_fonte.lineEdit().setFont(QFont(self.combo_fonte_principal.currentText(), int(tamanho)))
 
-    def expandir_lista_fontes(self, index):
+    def expandir_lista_fontes(self, _):
         self.combo_fonte_principal.showPopup()
 
-    def expandir_lista_tamanhos(self, index):
+    def expandir_lista_tamanhos(self, _):
         self.combo_tamanho_fonte.showPopup()
 
     def eventFilter(self, source, event):
@@ -1375,16 +1370,23 @@ class JanelaConfigPrograma(QWidget):
         tamanho_fonte = self.combo_tamanho_fonte.currentText()
 
         try:
-            self.config_db.atualizar_configuracao(
-                id_config=1,
-                logo_principal=logo_principal,
-                logo_rodape=logo_rodape,
-                fonte_principal=fonte_principal,
-                tamanho_fonte=tamanho_fonte
-            )
-            QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
-            self.voltar_janela_anterior()
-        except Exception as e:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('''
+                    UPDATE config_programa
+                    SET logo_principal = %s, logo_rodape = %s, fonte_principal = %s, tamanho_fonte = %s
+                    WHERE id = 1
+                ''', (logo_principal, logo_rodape, fonte_principal, tamanho_fonte))
+                conexao.commit()
+                QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
+                self.voltar_janela_anterior()
+        except mysql.connector.Error as e:
             QMessageBox.critical(self, 'Erro', f"Erro ao salvar configurações: {e}")
 
     def voltar_janela_anterior(self):
@@ -1465,6 +1467,7 @@ class SensorThread(QThread):
     def stop(self):
         self._is_running = False
 
+#Inicio da Classe JanelaDashboard
 class JanelaDashboard(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
@@ -1627,7 +1630,9 @@ class JanelaDashboard(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaDashboard
 
+#Inicio da classe JanelaConfigurarPCs
 class JanelaConfigurarPCs(QWidget):
     def __init__(self, usuario_logado, modo, parent_dashboard):
         super().__init__()

@@ -2,6 +2,7 @@ import mysql.connector
 import os
 import hashlib
 import configparser
+from datetime import datetime
 
 class GerenciadorBancoDados:
     def __init__(self, host, user, password, database, port):
@@ -143,6 +144,16 @@ class GerenciadorBancoDados:
                     print(f"\nEstrutura da tabela '{tabela}':")
                     for column in info:
                         print(column)
+
+                cursor.execute("SELECT id, data_criacao, ultimo_login FROM usuarios")
+                usuarios = cursor.fetchall()
+                print("\nDados da tabela 'usuarios':")
+                for usuario in usuarios:
+                    id, data_criacao, ultimo_login = usuario
+                    data_criacao = data_criacao.strftime("%d/%m/%Y %H:%M:%S") if data_criacao else None
+                    ultimo_login = ultimo_login.strftime("%d/%m/%Y %H:%M:%S") if ultimo_login else None
+                    print(f"ID: {id}, Data Criação: {data_criacao}, Último Login: {ultimo_login}")
+
         except mysql.connector.Error as e:
             print(e)
 
