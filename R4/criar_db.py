@@ -73,7 +73,7 @@ class GerenciadorBancoDados:
                     CREATE TABLE IF NOT EXISTS preferenciais_usuarios (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         usuario_id INT NOT NULL,
-                        fonte_principal VARCHAR(255) NOT NULL,
+                        fonte_perso VARCHAR(255) NOT NULL,
                         tamanho_fonte_perso INT,
                         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                     )
@@ -114,7 +114,7 @@ class GerenciadorBancoDados:
                     ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
                     admin_id = cursor.lastrowid
                     cursor.execute('''
-                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_principal, tamanho_fonte_perso) 
+                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_perso, tamanho_fonte_perso) 
                         VALUES (%s, %s, %s)
                     ''', (admin_id, "Arial", 18))
                     print("Usuário admin e preferências inseridos com sucesso.")
