@@ -1263,14 +1263,14 @@ class JanelaConfigPrograma(QWidget):
         self.combo_fonte_padrao.setEditable(True)
         self.combo_fonte_padrao.lineEdit().setReadOnly(True)
         self.combo_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
-        layout.addWidget(QLabel('Fonte Padrão:'))
+        layout.addWidget(QLabel('Fonte Global:'))
         layout.addWidget(self.combo_fonte_padrao)
 
         self.combo_tamanho_fonte_padrao = QComboBox(self)
         self.combo_tamanho_fonte_padrao.setEditable(True)
         self.combo_tamanho_fonte_padrao.lineEdit().setReadOnly(True)
         self.combo_tamanho_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
-        layout.addWidget(QLabel('Tamanho da Fonte:'))
+        layout.addWidget(QLabel('Tamanho da Fonte Global:'))
         layout.addWidget(self.combo_tamanho_fonte_padrao)
 
         botao_salvar = QPushButton('Salvar', self)

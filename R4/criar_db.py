@@ -2,7 +2,6 @@ import mysql.connector
 import os
 import hashlib
 import configparser
-from datetime import datetime
 
 class GerenciadorBancoDados:
     def __init__(self, host, user, password, database, port):
@@ -75,6 +74,8 @@ class GerenciadorBancoDados:
                         usuario_id INT NOT NULL,
                         fonte_perso VARCHAR(255) NOT NULL,
                         tamanho_fonte_perso INT,
+                        fonte_alterada TINYINT NOT NULL DEFAULT 0,
+                        tamanho_fonte_alterado TINYINT NOT NULL DEFAULT 0,
                         FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                     )
                 ''')
@@ -114,9 +115,9 @@ class GerenciadorBancoDados:
                     ''', ("admin", admin_password, "Administrador do Sistema", "admin@example.com", 1))
                     admin_id = cursor.lastrowid
                     cursor.execute('''
-                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_perso, tamanho_fonte_perso) 
-                        VALUES (%s, %s, %s)
-                    ''', (admin_id, "Arial", 18))
+                        INSERT INTO preferenciais_usuarios (usuario_id, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado) 
+                        VALUES (%s, %s, %s, %s, %s)
+                    ''', (admin_id, "Arial", 18, 0, 0))
                     print("Usuário admin e preferências inseridos com sucesso.")
                 else:
                     print("Usuário admin já existe.")
