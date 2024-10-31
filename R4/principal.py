@@ -1038,10 +1038,10 @@ class JanelaResultadosData(QWidget):
 
 class JanelaConfigUsuarios(QWidget):
     def __init__(self, usuario_logado, modo):
+        super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
-        self.config_usuarios = ConfigUsuarios(usuario_logado)
-        super().__init__()
+        self.config_usuarios = ConfigUsuarios(usuario_logado, host, user, password, database, port)
         self.inicializarUI()
 
     def inicializarUI(self):
@@ -1168,7 +1168,8 @@ class JanelaConfigUsuarios(QWidget):
         try:
             usuarios = self.config_usuarios.listar_usuarios()
             for usuario in usuarios:
-                item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
+                id_usuario, nome_usuario, nome_completo, email, is_admin = usuario
+                item = QListWidgetItem(f"ID: {id_usuario} | Usuário: {nome_usuario} | Nome: {nome_completo} | Email: {email} | Admin: {'Sim' if is_admin else 'Não'}")
                 item.setData(Qt.UserRole, usuario)
                 self.lista_usuarios_remover.addItem(item)
         except Exception as e:
@@ -1208,12 +1209,9 @@ class JanelaConfigUsuarios(QWidget):
 
             self.janela_ver_usuarios = QWidget()
             self.janela_ver_usuarios.setWindowTitle('Informações dos Usuários')
-            
-            # Set the width to a fixed value and height based on the number of users
             width = 800
             height = 100 + (len(usuarios) * 30) if usuarios else 200
             self.janela_ver_usuarios.setGeometry(100, 100, width, height)
-            
             layout = QVBoxLayout()
 
             if not usuarios:
@@ -1222,7 +1220,8 @@ class JanelaConfigUsuarios(QWidget):
             else:
                 self.lista_usuarios = QListWidget(self.janela_ver_usuarios)
                 for usuario in usuarios:
-                    item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
+                    id_usuario, nome_usuario, nome_completo, email, is_admin = usuario
+                    item = QListWidgetItem(f"ID: {id_usuario} | Usuário: {nome_usuario} | Nome: {nome_completo} | Email: {email} | Admin: {'Sim' if is_admin else 'Não'}")
                     item.setData(Qt.UserRole, usuario)
                     self.lista_usuarios.addItem(item)
                 layout.addWidget(self.lista_usuarios)
@@ -1255,27 +1254,29 @@ class JanelaConfigUsuarios(QWidget):
         self.janela_edicao.setGeometry(100, 100, 400, 300)
         layout = QVBoxLayout()
 
+        id_usuario, nome_usuario, nome_completo, email, is_admin = usuario
+
         self.input_usuario = QLineEdit(self.janela_edicao)
-        self.input_usuario.setText(usuario[1])
+        self.input_usuario.setText(nome_usuario)
         layout.addWidget(QLabel('Usuário:'))
         layout.addWidget(self.input_usuario)
 
         self.input_nome_completo = QLineEdit(self.janela_edicao)
-        self.input_nome_completo.setText(usuario[2])
+        self.input_nome_completo.setText(nome_completo)
         layout.addWidget(QLabel('Nome Completo:'))
         layout.addWidget(self.input_nome_completo)
 
         self.input_email = QLineEdit(self.janela_edicao)
-        self.input_email.setText(usuario[3])
+        self.input_email.setText(email)
         layout.addWidget(QLabel('Email:'))
         layout.addWidget(self.input_email)
 
         self.checkbox_is_admin = QCheckBox('Administrador', self.janela_edicao)
-        self.checkbox_is_admin.setChecked(usuario[4])
+        self.checkbox_is_admin.setChecked(is_admin)
         layout.addWidget(self.checkbox_is_admin, alignment=Qt.AlignCenter)
 
         botao_salvar = QPushButton('Salvar', self.janela_edicao)
-        botao_salvar.clicked.connect(lambda: self.salvar_edicao_usuario(usuario[0]))
+        botao_salvar.clicked.connect(lambda: self.salvar_edicao_usuario(id_usuario))
         layout.addWidget(botao_salvar)
 
         botao_cancelar = QPushButton('Cancelar', self.janela_edicao)
@@ -1317,7 +1318,8 @@ class JanelaConfigUsuarios(QWidget):
             try:
                 usuarios = self.config_usuarios.listar_usuarios()
                 for usuario in usuarios:
-                    item = QListWidgetItem(f"ID: {usuario[0]} | Usuário: {usuario[1]} | Nome: {usuario[2]} | Email: {usuario[3]} | Admin: {'Sim' if usuario[4] else 'Não'}")
+                    id_usuario, nome_usuario, nome_completo, email, is_admin = usuario
+                    item = QListWidgetItem(f"ID: {id_usuario} | Usuário: {nome_usuario} | Nome: {nome_completo} | Email: {email} | Admin: {'Sim' if is_admin else 'Não'}")
                     item.setData(Qt.UserRole, usuario)
                     self.lista_usuarios.addItem(item)
             except Exception as e:
@@ -1394,8 +1396,6 @@ class JanelaConfigUsuarios(QWidget):
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
-        self.show()
-# Fim da classe JanelaConfigUsuarios
 
 #Inicio da classe JanelaConfigPrograma
 class JanelaConfigPrograma(QWidget):
