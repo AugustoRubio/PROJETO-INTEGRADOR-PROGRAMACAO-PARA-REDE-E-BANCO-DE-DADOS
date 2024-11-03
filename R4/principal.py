@@ -62,6 +62,7 @@ from modos import Modo
 from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
 from scanner_rede import PingIP
 from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtWidgets import QHeaderView
 
 #Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
 #Como a função de escanear a rede captura as informações nesse arquivo, é necessário inicializar as variáveis antes de chamar a função
@@ -990,6 +991,7 @@ class JanelaResultadosData(QWidget):
         self.tabela_resultados = QTableWidget(self)
         self.tabela_resultados.setColumnCount(5)
         self.tabela_resultados.setHorizontalHeaderLabels(['Data', 'Hostname', 'MAC Address', 'IP', 'Portas'])
+        self.tabela_resultados.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         layout.addWidget(self.tabela_resultados)
 
         self.carregar_resultados()
@@ -1029,6 +1031,7 @@ class JanelaResultadosData(QWidget):
                     self.tabela_resultados.insertRow(row_position)
                     for column, data in enumerate(resultado):
                         self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
+                self.tabela_resultados.resizeColumnsToContents()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar informações: {e}")
 
