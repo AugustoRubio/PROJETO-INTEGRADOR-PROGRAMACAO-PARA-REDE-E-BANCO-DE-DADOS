@@ -521,12 +521,9 @@ class JanelaPrincipal(QWidget):
         self.hide()
 
     def abrir_janela_config_programa(self):
-        if self.usuario_logado['is_admin']:
-            self.janela_config_programa = JanelaConfigPrograma(self.usuario_logado, self.modo)
-            self.janela_config_programa.show()
-            self.hide()
-        else:
-            QMessageBox.warning(self, 'Acesso Negado', 'Somente administradores podem acessar as configurações do programa.')
+        self.janela_config_programa = JanelaConfigPrograma(self.usuario_logado, self.modo)
+        self.janela_config_programa.show()
+        self.hide()
 
     def abrir_dashboard(self):
         self.janela_dashboard = JanelaDashboard(self.usuario_logado, self.modo)
