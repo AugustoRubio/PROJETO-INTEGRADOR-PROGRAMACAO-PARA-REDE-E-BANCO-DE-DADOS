@@ -1506,6 +1506,10 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Tamanho da Fonte do Usuário:'))
         layout.addWidget(self.combo_tamanho_fonte_usuario)
 
+        self.checkbox_resetar_fonte = QCheckBox('Resetar Fonte para Padrão', self)
+        self.checkbox_resetar_fonte.stateChanged.connect(self.resetar_fonte_padrao)
+        layout.addWidget(self.checkbox_resetar_fonte)
+
         botao_salvar = QPushButton('Salvar', self)
         botao_salvar.clicked.connect(self.salvar_configuracoes)
         layout.addWidget(botao_salvar)
@@ -1607,7 +1611,6 @@ class JanelaConfigPrograma(QWidget):
     def expandir_lista_tamanhos(self, _):
         self.combo_tamanho_fonte_padrao.showPopup()
 
-    
     def carregar_fontes_usuario(self):
         fontes = QFontDatabase().families()
         for fonte in fontes:
@@ -1649,6 +1652,11 @@ class JanelaConfigPrograma(QWidget):
                 self.combo_tamanho_fonte_usuario.showPopup()
         return super().eventFilter(source, event)
 
+    def resetar_fonte_padrao(self, state):
+        if state == Qt.Checked:
+            self.combo_fonte_usuario.setCurrentText("")
+            self.combo_tamanho_fonte_usuario.setCurrentText("")
+
     def salvar_configuracoes(self):
         fonte_usuario = self.combo_fonte_usuario.currentText()
         tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
@@ -1675,11 +1683,24 @@ class JanelaConfigPrograma(QWidget):
                         WHERE id = 1
                     ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
 
-                cursor.execute('''
-                    UPDATE preferenciais_usuarios
-                    SET fonte_perso = %s, tamanho_fonte_perso = %s, fonte_alterada = %s, tamanho_fonte_alterado = %s
-                    WHERE usuario_id = %s
-                ''', (fonte_usuario, tamanho_fonte_usuario, 1, 1, self.usuario_logado['id']))
+                if self.checkbox_resetar_fonte.isChecked():
+                    cursor.execute('SELECT fonte_padrao, tamanho_fonte_padrao FROM config_programa WHERE id = 1')
+                    configuracao = cursor.fetchone()
+                    if configuracao:
+                        fonte_padrao, tamanho_fonte_padrao = configuracao
+                        self.combo_fonte_usuario.setCurrentText(fonte_padrao)
+                        self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_padrao))
+                        cursor.execute('''
+                            UPDATE preferenciais_usuarios
+                            SET fonte_perso = %s, tamanho_fonte_perso = %s, fonte_alterada = %s, tamanho_fonte_alterado = %s
+                            WHERE usuario_id = %s
+                        ''', (fonte_padrao, tamanho_fonte_padrao, 0, 0, self.usuario_logado['id']))
+                else:
+                    cursor.execute('''
+                        UPDATE preferenciais_usuarios
+                        SET fonte_perso = %s, tamanho_fonte_perso = %s, fonte_alterada = %s, tamanho_fonte_alterado = %s
+                        WHERE usuario_id = %s
+                    ''', (fonte_usuario, tamanho_fonte_usuario, 1, 1, self.usuario_logado['id']))
 
                 conexao.commit()
                 QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
@@ -1699,7 +1720,6 @@ class JanelaConfigPrograma(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-
 
 class PingThread(QThread):
     resultado_ping = pyqtSignal(str, str, str, dict, str)
