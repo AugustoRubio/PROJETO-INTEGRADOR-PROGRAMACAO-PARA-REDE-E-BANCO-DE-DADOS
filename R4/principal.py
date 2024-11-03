@@ -35,7 +35,7 @@ DependencyChecker.check_and_install_dependencies()
 import sys
 import mysql.connector
 import hashlib
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer
 
@@ -220,7 +220,7 @@ class JanelaLogin(QWidget):
             self.label_logo_rodape.setPixmap(self.pixmap_logo_rodape.scaled(200, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_rodape)
 
-        self.aplicar_modo()
+            self.aplicar_modo()
 
     def verificar_login(self):
         usuario = self.input_usuario.text()
@@ -425,11 +425,13 @@ class JanelaPrincipal(QWidget):
                 database=database,
                 port=port
             ) as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT modo_tela FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
+                cursor = conexao.cursor(dictionary=True)
+                cursor.execute('SELECT modo_tela, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
                 preferencia = cursor.fetchone()
                 if preferencia:
-                    self.modo.modo_atual = 'escuro' if preferencia[0] == 1 else 'claro'
+                    self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
+                    self.fonte_padrao = preferencia['fonte_perso'] if preferencia['fonte_alterada'] else self.modo.config['fonte_padrao']
+                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso'] if preferencia['tamanho_fonte_alterado'] else self.modo.config['tamanho_fonte_padrao']
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
 
@@ -578,8 +580,8 @@ class JanelaPrincipal(QWidget):
         QWidget {{
             background-color: {estilo["widget"]["background-color"]};
             color: {estilo["widget"]["color"]};
-            font-family: {estilo["widget"]["font-family"]};
-            font-size: {estilo["widget"]["font-size"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
         }}
         QPushButton {{
             background-color: {estilo["botao"]["background-color"]};
@@ -597,7 +599,6 @@ class JanelaPrincipal(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaPrincipal
 
 #Começo da classe JanelaScannerRede
 class JanelaScannerRede(QWidget):
