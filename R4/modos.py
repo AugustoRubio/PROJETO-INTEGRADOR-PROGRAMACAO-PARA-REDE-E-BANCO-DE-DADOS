@@ -229,6 +229,57 @@ class ModosPrincipais(QMainWindow):
         if self.fonte_padrao and self.tamanho_fonte_padrao:
             self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
 
+    def carregar_fontes_personalizadas(self):
+        config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+        config.read(config_path)
+
+        host = config['mysql']['host']
+        user = config['mysql']['user']
+        password = config['mysql']['password']
+        database = config['mysql']['database']
+        port = config['mysql'].getint('port')
+
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute('SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (1,))
+                preferencia = cursor.fetchone()
+                if preferencia:
+                    if preferencia['fonte_alterada'] == 0 or preferencia['tamanho_fonte_alterado'] == 0:
+                        cursor.execute('SELECT fonte_padrao, tamanho_fonte_padrao FROM config_programa WHERE id = 1')
+                        config_programa = cursor.fetchone()
+                        if config_programa:
+                            self.fonte_padrao = config_programa['fonte_padrao'] if preferencia['fonte_alterada'] == 0 else preferencia['fonte_perso']
+                            self.tamanho_fonte_padrao = config_programa['tamanho_fonte_padrao'] if preferencia['tamanho_fonte_alterado'] == 0 else preferencia['tamanho_fonte_perso']
+                    else:
+                        self.fonte_padrao = preferencia['fonte_perso']
+                        self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso']
+        except mysql.connector.Error as e:
+            print(f"Erro ao carregar fontes personalizadas: {e}")
+
+    def initUI(self):
+        self.carregar_fontes_personalizadas()
+        self.setWindowTitle("Modo Claro/Escuro")
+
+        self.switch_button = QPushButton("Trocar Modo", self)
+        self.switch_button.clicked.connect(self.trocar_modo)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.switch_button)
+
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+
+        self.aplicar_modo()
+        
 if __name__ == "__main__":
     app = QApplication([])
     window = ModosPrincipais()

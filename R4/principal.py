@@ -143,6 +143,8 @@ class JanelaLogin(QWidget):
                 cursor = conexao.cursor()
                 cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
                 configuracao = cursor.fetchone()
+                cursor.execute('SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (1,))
+                preferencia_usuario = cursor.fetchone()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
             return
@@ -150,6 +152,12 @@ class JanelaLogin(QWidget):
         if configuracao:
             self.logo_principal, self.logo_rodape, self.fonte_padrao, self.tamanho_fonte_padrao, self.modo_global = configuracao
             self.modo.modo_atual = 'escuro' if self.modo_global == 1 else 'claro'
+            if preferencia_usuario:
+                fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado = preferencia_usuario
+                if fonte_alterada:
+                    self.fonte_padrao = fonte_perso
+                if tamanho_fonte_alterado:
+                    self.tamanho_fonte_padrao = tamanho_fonte_perso
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
             return
@@ -1171,7 +1179,7 @@ class JanelaConfigUsuarios(QWidget):
                     tamanho_fonte_alterado,
                     modo_tela
                 ) VALUES (%s, %s, %s, %s, %s, %s)
-            ''', (usuario_id, "Arial", 12, 0, 0, 0))
+            ''', (usuario_id, "Arial", 18, 0, 0, 0))
             conexao.commit()
 
             QMessageBox.information(self, 'Sucesso', 'Usuário adicionado com sucesso.')
