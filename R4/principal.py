@@ -54,10 +54,9 @@ from usuarios import ConfigUsuarios
 #Importa as classes do arquivo config_programa.py, que cuida das funções de adicionar, editar e remover configurações do programa no banco de dados
 from config_programa import ConfiguracaoProgramaDB
 #Importa as classes do arquivo modos.py, que cuida das funções de trocar o modo de cores do programa
-from modos import Modo
+from modos import Modo  # Ensure this import is correct and the Modo class is defined in modos.py
 #Importa as classes do arquivo criar_db.py, que cuida das funções de criar o banco de dados e verificar se o banco de dados já existe
 from criar_db import GerenciadorBancoDados
-from modos import Modo
 #Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
 from scanner_rede import PingIP
@@ -220,7 +219,7 @@ class JanelaLogin(QWidget):
             self.label_logo_rodape.setPixmap(self.pixmap_logo_rodape.scaled(200, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             self.layout.addWidget(self.label_logo_rodape)
 
-            self.aplicar_modo()
+        self.aplicar_modo()
 
     def verificar_login(self):
         usuario = self.input_usuario.text()
@@ -382,6 +381,7 @@ class JanelaLogin(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+        self.raise_()
 
     def aplicar_modo(self):
         estilo = self.modo.atualizar_switch()
@@ -430,8 +430,8 @@ class JanelaPrincipal(QWidget):
                 preferencia = cursor.fetchone()
                 if preferencia:
                     self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
-                    self.fonte_padrao = preferencia['fonte_perso'] if preferencia['fonte_alterada'] else self.modo.config['fonte_padrao']
-                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso'] if preferencia['tamanho_fonte_alterado'] else self.modo.config['tamanho_fonte_padrao']
+                    self.fonte_padrao = preferencia['fonte_perso'] if preferencia['fonte_alterada'] else self.modo.config.get('fonte_padrao', 'DefaultFont')
+                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso'] if preferencia['tamanho_fonte_alterado'] else self.modo.config.get('tamanho_fonte_padrao', 12)
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
 
@@ -595,11 +595,11 @@ class JanelaPrincipal(QWidget):
             color: {estilo["label"]["color"]};
         }}
         """)
-
+    
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-
+                
 #Começo da classe JanelaScannerRede
 class JanelaScannerRede(QWidget):
     def __init__(self, usuario_logado, modo):
@@ -1458,35 +1458,41 @@ class JanelaConfigPrograma(QWidget):
         self.label_instrucoes = QLabel('Configure as opções do programa:', self)
         layout.addWidget(self.label_instrucoes, alignment=Qt.AlignTop)
 
-        self.input_logo_principal = QLineEdit(self)
-        layout.addWidget(QLabel('Logo Principal:'))
-        layout.addWidget(self.input_logo_principal)
+        if self.usuario_logado['is_admin']:
+            self.input_logo_principal = QLineEdit(self)
+            layout.addWidget(QLabel('Logo Principal:'))
+            layout.addWidget(self.input_logo_principal)
 
-        self.botao_logo_principal = QPushButton('Selecionar Logo Principal', self)
-        self.botao_logo_principal.clicked.connect(self.selecionar_logo_principal)
-        layout.addWidget(self.botao_logo_principal)
+            self.botao_logo_principal = QPushButton('Selecionar Logo Principal', self)
+            self.botao_logo_principal.clicked.connect(self.selecionar_logo_principal)
+            layout.addWidget(self.botao_logo_principal)
 
-        self.input_logo_rodape = QLineEdit(self)
-        layout.addWidget(QLabel('Logo Rodapé:'))
-        layout.addWidget(self.input_logo_rodape)
+            self.input_logo_rodape = QLineEdit(self)
+            layout.addWidget(QLabel('Logo Rodapé:'))
+            layout.addWidget(self.input_logo_rodape)
 
-        self.botao_logo_rodape = QPushButton('Selecionar Logo Rodapé', self)
-        self.botao_logo_rodape.clicked.connect(self.selecionar_logo_rodape)
-        layout.addWidget(self.botao_logo_rodape)
+            self.botao_logo_rodape = QPushButton('Selecionar Logo Rodapé', self)
+            self.botao_logo_rodape.clicked.connect(self.selecionar_logo_rodape)
+            layout.addWidget(self.botao_logo_rodape)
 
-        self.combo_fonte_padrao = QComboBox(self)
-        self.combo_fonte_padrao.setEditable(True)
-        self.combo_fonte_padrao.lineEdit().setReadOnly(True)
-        self.combo_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
-        layout.addWidget(QLabel('Fonte Global:'))
-        layout.addWidget(self.combo_fonte_padrao)
+            self.combo_fonte_padrao = QComboBox(self)
+            self.combo_fonte_padrao.setEditable(True)
+            self.combo_fonte_padrao.lineEdit().setReadOnly(True)
+            self.combo_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
+            layout.addWidget(QLabel('Fonte Global:'))
+            layout.addWidget(self.combo_fonte_padrao)
 
-        self.combo_tamanho_fonte_padrao = QComboBox(self)
-        self.combo_tamanho_fonte_padrao.setEditable(True)
-        self.combo_tamanho_fonte_padrao.lineEdit().setReadOnly(True)
-        self.combo_tamanho_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
-        layout.addWidget(QLabel('Tamanho da Fonte Global:'))
-        layout.addWidget(self.combo_tamanho_fonte_padrao)
+            self.combo_tamanho_fonte_padrao = QComboBox(self)
+            self.combo_tamanho_fonte_padrao.setEditable(True)
+            self.combo_tamanho_fonte_padrao.lineEdit().setReadOnly(True)
+            self.combo_tamanho_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
+            layout.addWidget(QLabel('Tamanho da Fonte Global:'))
+            layout.addWidget(self.combo_tamanho_fonte_padrao)
+
+            self.combo_modo_padrao = QComboBox(self)
+            self.combo_modo_padrao.addItems(['Claro', 'Escuro'])
+            layout.addWidget(QLabel('Modo Padrão:'))
+            layout.addWidget(self.combo_modo_padrao)
 
         self.combo_fonte_usuario = QComboBox(self)
         self.combo_fonte_usuario.setEditable(True)
@@ -1501,11 +1507,6 @@ class JanelaConfigPrograma(QWidget):
         self.combo_tamanho_fonte_usuario.lineEdit().setAlignment(Qt.AlignCenter)
         layout.addWidget(QLabel('Tamanho da Fonte do Usuário:'))
         layout.addWidget(self.combo_tamanho_fonte_usuario)
-
-        self.combo_modo_padrao = QComboBox(self)
-        self.combo_modo_padrao.addItems(['Claro', 'Escuro'])
-        layout.addWidget(QLabel('Modo Padrão:'))
-        layout.addWidget(self.combo_modo_padrao)
 
         botao_salvar = QPushButton('Salvar', self)
         botao_salvar.clicked.connect(self.salvar_configuracoes)
@@ -1541,9 +1542,10 @@ class JanelaConfigPrograma(QWidget):
     def carregar_fontes(self):
         fontes = QFontDatabase().families()
         for fonte in fontes:
-            self.combo_fonte_padrao.addItem(fonte)
-            index = self.combo_fonte_padrao.findText(fonte)
-            self.combo_fonte_padrao.setItemData(index, QFont(fonte), Qt.FontRole)
+            if self.usuario_logado['is_admin']:
+                self.combo_fonte_padrao.addItem(fonte)
+                index = self.combo_fonte_padrao.findText(fonte)
+                self.combo_fonte_padrao.setItemData(index, QFont(fonte), Qt.FontRole)
         self.combo_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_fonte)
         self.combo_fonte_padrao.view().setMouseTracking(True)
         self.combo_fonte_padrao.view().entered.connect(self.expandir_lista_fontes)
@@ -1551,7 +1553,8 @@ class JanelaConfigPrograma(QWidget):
 
     def carregar_tamanhos_fonte(self):
         for tamanho in range(1, 101):
-            self.combo_tamanho_fonte_padrao.addItem(str(tamanho))
+            if self.usuario_logado['is_admin']:
+                self.combo_tamanho_fonte_padrao.addItem(str(tamanho))
         self.combo_tamanho_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_padrao)
         self.combo_tamanho_fonte_padrao.view().setMouseTracking(True)
         self.combo_tamanho_fonte_padrao.view().entered.connect(self.expandir_lista_tamanhos)
@@ -1567,14 +1570,15 @@ class JanelaConfigPrograma(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
-                configuracao = cursor.fetchone()
-                if configuracao:
-                    self.input_logo_principal.setText(configuracao[0])
-                    self.input_logo_rodape.setText(configuracao[1])
-                    self.combo_fonte_padrao.setCurrentText(configuracao[2])
-                    self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[3]))
-                    self.combo_modo_padrao.setCurrentIndex(configuracao[4])
+                if self.usuario_logado['is_admin']:
+                    cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
+                    configuracao = cursor.fetchone()
+                    if configuracao:
+                        self.input_logo_principal.setText(configuracao[0])
+                        self.input_logo_rodape.setText(configuracao[1])
+                        self.combo_fonte_padrao.setCurrentText(configuracao[2])
+                        self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[3]))
+                        self.combo_modo_padrao.setCurrentIndex(configuracao[4])
 
                 cursor.execute('SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
                 preferencia_usuario = cursor.fetchone()
@@ -1583,11 +1587,11 @@ class JanelaConfigPrograma(QWidget):
                     if fonte_alterada:
                         self.combo_fonte_usuario.setCurrentText(fonte_perso)
                     else:
-                        self.combo_fonte_usuario.setCurrentText(configuracao[2])
+                        self.combo_fonte_usuario.setCurrentText(configuracao[2] if self.usuario_logado['is_admin'] else "")
                     if tamanho_fonte_alterado:
                         self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
                     else:
-                        self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[3]))
+                        self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[3] if self.usuario_logado['is_admin'] else ""))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
@@ -1655,13 +1659,8 @@ class JanelaConfigPrograma(QWidget):
         return super().eventFilter(source, event)
 
     def salvar_configuracoes(self):
-        logo_principal = self.input_logo_principal.text()
-        logo_rodape = self.input_logo_rodape.text()
-        fonte_padrao = self.combo_fonte_padrao.currentText()
-        tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText()
         fonte_usuario = self.combo_fonte_usuario.currentText()
         tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
-        modo_padrao = self.combo_modo_padrao.currentIndex()
 
         try:
             with mysql.connector.connect(
@@ -1672,11 +1671,18 @@ class JanelaConfigPrograma(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('''
-                    UPDATE config_programa
-                    SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s, modo_global = %s
-                    WHERE id = 1
-                ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
+                if self.usuario_logado['is_admin']:
+                    logo_principal = self.input_logo_principal.text()
+                    logo_rodape = self.input_logo_rodape.text()
+                    fonte_padrao = self.combo_fonte_padrao.currentText()
+                    tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText()
+                    modo_padrao = self.combo_modo_padrao.currentIndex()
+
+                    cursor.execute('''
+                        UPDATE config_programa
+                        SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s, modo_global = %s
+                        WHERE id = 1
+                    ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
 
                 cursor.execute('''
                     UPDATE preferenciais_usuarios
