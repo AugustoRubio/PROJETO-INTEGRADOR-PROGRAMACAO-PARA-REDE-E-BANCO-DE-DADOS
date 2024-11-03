@@ -1,14 +1,21 @@
 import configparser
 import os
+from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtGui import QFont
 
 import mysql.connector
 
+#Inicio da classe Modo
 class Modo:
     def __init__(self):
         self.modo_atual = 'claro'
         self.config = self.carregar_configuracao()
-        self.icone_modo_escuro = self.config['icone_modo_escuro']
-        self.icone_modo_claro = self.config['icone_modo_claro']
+        if self.config:
+            self.icone_modo_escuro = self.config.get('icone_modo_escuro', '')
+            self.icone_modo_claro = self.config.get('icone_modo_claro', '')
+        else:
+            self.icone_modo_escuro = ''
+            self.icone_modo_claro = ''
 
     def carregar_configuracao(self):
         config = configparser.ConfigParser()
@@ -110,3 +117,120 @@ class Modo:
                 }
             }
         return estilo
+#Fim da classe Modo
+
+class ModosPrincipais(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.modo = Modo()
+        self.fonte_padrao = "Arial"
+        self.tamanho_fonte_padrao = 18
+
+        self.carregar_preferencias_usuario()
+        self.initUI()
+
+    def carregar_preferencias_usuario(self):
+        config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+        config.read(config_path)
+
+        host = config['mysql']['host']
+        user = config['mysql']['user']
+        password = config['mysql']['password']
+        database = config['mysql']['database']
+        port = config['mysql'].getint('port')
+
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conn:
+                cursor = conn.cursor(dictionary=True)
+                cursor.execute('SELECT modo_tela, fonte_perso, tamanho_fonte_perso FROM preferenciais_usuarios WHERE usuario_id = %s', (1,))
+                preferencia = cursor.fetchone()
+                if preferencia:
+                    self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
+                    self.fonte_padrao = preferencia['fonte_perso'] if preferencia['fonte_perso'] else self.fonte_padrao
+                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso'] if preferencia['tamanho_fonte_perso'] else self.tamanho_fonte_padrao
+        except mysql.connector.Error as e:
+            print(f"Erro ao carregar preferência de modo: {e}")
+
+    def initUI(self):
+        self.setWindowTitle("Modo Claro/Escuro")
+
+        self.switch_button = QPushButton("Trocar Modo", self)
+        self.switch_button.clicked.connect(self.trocar_modo)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.switch_button)
+
+        container = QWidget()
+        container.setLayout(layout)
+        self.setCentralWidget(container)
+
+        self.aplicar_modo()
+
+    def trocar_modo(self):
+        self.modo.trocar_modo()
+        self.salvar_preferencia_usuario()
+        self.aplicar_modo()
+
+    def salvar_preferencia_usuario(self):
+        config = configparser.ConfigParser()
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+        config.read(config_path)
+
+        host = config['mysql']['host']
+        user = config['mysql']['user']
+        password = config['mysql']['password']
+        database = config['mysql']['database']
+        port = config['mysql'].getint('port')
+
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conn:
+                cursor = conn.cursor()
+                modo_tela = 1 if self.modo.modo_atual == 'escuro' else 0
+                cursor.execute('UPDATE preferenciais_usuarios SET modo_tela = %s, fonte_perso = %s, tamanho_fonte_perso = %s WHERE usuario_id = %s', 
+                               (modo_tela, self.fonte_padrao, self.tamanho_fonte_padrao, 1))
+                conn.commit()
+        except mysql.connector.Error as e:
+            print(f"Erro ao salvar preferência de modo: {e}")
+
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
+
+if __name__ == "__main__":
+    app = QApplication([])
+    window = ModosPrincipais()
+    window.show()
+    app.exec_()

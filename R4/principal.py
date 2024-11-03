@@ -1759,6 +1759,70 @@ class SensorThread(QThread):
     def stop(self):
         self._is_running = False
 
+class PingThread(QThread):
+    resultado_ping = pyqtSignal(str, str, str, dict, str)
+
+    def __init__(self, usuario, ip, porta, parent=None):
+        super().__init__(parent)
+        self.usuario = usuario
+        self.ip = ip
+        self.porta = porta
+        self._is_running = True
+        self._last_ping_time = None
+
+    def run(self):
+        current_time = datetime.now()
+        if self._last_ping_time and (current_time - self._last_ping_time).seconds < 60:
+            return
+
+        ping = PingIP(self.ip)
+        status = "Online" if ping.ping() else "Offline"
+        if status == "Offline" or not self._is_running:
+            self.resultado_ping.emit(self.usuario, self.ip, self.porta, {}, status)
+            return
+
+        monitor = MonitorDeHardware(self.ip, self.porta)
+        dados = monitor.obter_info_hardware()
+        if not dados or not self._is_running:
+            self.resultado_ping.emit(self.usuario, self.ip, self.porta, {}, status)
+            return
+
+        extractor = ExtratorDeInfoHardware()
+        info_extraida = extractor.obter_info(dados)
+        specific_sensors = extractor.encontrar_sensores_especificos(info_extraida)
+        self.resultado_ping.emit(self.usuario, self.ip, self.porta, specific_sensors, status)
+        self._last_ping_time = current_time
+
+    def stop(self):
+        self._is_running = False
+
+class SensorThread(QThread):
+    resultado_sensor = pyqtSignal(str, str, str, dict)
+
+    def __init__(self, usuario, ip, porta, parent=None):
+        super().__init__(parent)
+        self.usuario = usuario
+        self.ip = ip
+        self.porta = porta
+        self._is_running = True
+
+    def run(self):
+        while self._is_running:
+            monitor = MonitorDeHardware(self.ip, self.porta)
+            dados = monitor.obter_info_hardware()
+            if not dados or not self._is_running:
+                self.resultado_sensor.emit(self.usuario, self.ip, self.porta, {})
+                return
+
+            extractor = ExtratorDeInfoHardware()
+            info_extraida = extractor.obter_info(dados)
+            specific_sensors = extractor.encontrar_sensores_especificos(info_extraida)
+            self.resultado_sensor.emit(self.usuario, self.ip, self.porta, specific_sensors)
+            QThread.sleep(10)  # Sleep for 10 seconds before the next update
+
+    def stop(self):
+        self._is_running = False
+
 #Inicio da Classe JanelaDashboard
 class JanelaDashboard(QWidget):
     def __init__(self, usuario_logado, modo):
@@ -1808,6 +1872,9 @@ class JanelaDashboard(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.decrementar_tempo)
         self.timer.start(1000)  # 1000 milissegundos = 1 segundo
+
+        self.carregar_preferencia_modo()
+        self.aplicar_modo()
 
     def center(self):
         qr = self.frameGeometry()
@@ -1922,7 +1989,50 @@ class JanelaDashboard(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaDashboard
+
+    def carregar_preferencia_modo(self):
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT modo_tela, fonte_perso, tamanho_fonte_perso FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
+                preferencia = cursor.fetchone()
+                if preferencia:
+                    self.modo.modo_atual = 'escuro' if preferencia[0] == 1 else 'claro'
+                    self.fonte_padrao = preferencia[1] if preferencia[1] else self.fonte_padrao
+                    self.tamanho_fonte_padrao = preferencia[2] if preferencia[2] else self.tamanho_fonte_padrao
+                    self.aplicar_modo()
+        except mysql.connector.Error as e:
+            self.mostrar_erro(f"Erro ao carregar preferência de modo: {e}")
+
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
 
 #Inicio da classe JanelaConfigurarPCs
 class JanelaConfigurarPCs(QWidget):
