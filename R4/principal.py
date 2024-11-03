@@ -1016,7 +1016,7 @@ class JanelaResultadosData(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor()
-                cursor.execute('SELECT * FROM scanner WHERE DATE(data) = %s', (datetime.strptime(self.data_selecionada, '%d/%m/%Y').date(),))
+                cursor.execute('SELECT data, hostname, mac_address, ip, portas FROM scanner WHERE DATE(data) = %s', (datetime.strptime(self.data_selecionada, '%d/%m/%Y').date(),))
                 resultados = cursor.fetchall()
 
                 if not resultados:
