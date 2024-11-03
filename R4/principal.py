@@ -1146,11 +1146,42 @@ class JanelaConfigUsuarios(QWidget):
             return
 
         try:
+            # Adicionar o usuário
             self.config_usuarios.adicionar_usuario(usuario, nome_completo, email, senha, is_admin)
+
+            # Após adicionar o usuário, insere as preferências padrão na tabela preferenciais_usuarios
+            conexao = mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            )
+            cursor = conexao.cursor()
+            # Obtém o ID do novo usuário
+            cursor.execute("SELECT id FROM usuarios WHERE usuario = %s", (usuario,))
+            usuario_id = cursor.fetchone()[0]
+            # Insere as preferências padrão
+            cursor.execute('''
+                INSERT INTO preferenciais_usuarios (
+                    usuario_id,
+                    fonte_perso,
+                    tamanho_fonte_perso,
+                    fonte_alterada,
+                    tamanho_fonte_alterado,
+                    modo_tela
+                ) VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (usuario_id, "Arial", 12, 0, 0, 0))
+            conexao.commit()
+
             QMessageBox.information(self, 'Sucesso', 'Usuário adicionado com sucesso.')
             self.janela_adicionar.close()
         except Exception as e:
             self.mostrar_erro(f"Erro ao adicionar usuário: {e}")
+        finally:
+            if 'conexao' in locals() and conexao.is_connected():
+                cursor.close()
+                conexao.close()
 
     def remover_usuario(self):
         if not self.usuario_logado['is_admin']:
