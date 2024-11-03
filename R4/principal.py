@@ -38,6 +38,7 @@ import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer
+from PyQt5.QtGui import QFont
 
 import os
 import configparser
@@ -1537,25 +1538,25 @@ class JanelaConfigPrograma(QWidget):
             self.input_logo_rodape.setText(caminho_logo)
 
     def carregar_fontes(self):
-        fontes = QFontDatabase().families()
-        for fonte in fontes:
-            if self.usuario_logado['is_admin']:
+        if self.usuario_logado['is_admin']:
+            fontes = QFontDatabase().families()
+            for fonte in fontes:
                 self.combo_fonte_padrao.addItem(fonte)
                 index = self.combo_fonte_padrao.findText(fonte)
                 self.combo_fonte_padrao.setItemData(index, QFont(fonte), Qt.FontRole)
-        self.combo_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_fonte)
-        self.combo_fonte_padrao.view().setMouseTracking(True)
-        self.combo_fonte_padrao.view().entered.connect(self.expandir_lista_fontes)
-        self.combo_fonte_padrao.lineEdit().installEventFilter(self)
+            self.combo_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_fonte)
+            self.combo_fonte_padrao.view().setMouseTracking(True)
+            self.combo_fonte_padrao.view().entered.connect(self.expandir_lista_fontes)
+            self.combo_fonte_padrao.lineEdit().installEventFilter(self)
 
     def carregar_tamanhos_fonte(self):
-        for tamanho in range(1, 101):
-            if self.usuario_logado['is_admin']:
+        if self.usuario_logado['is_admin']:
+            for tamanho in range(1, 101):
                 self.combo_tamanho_fonte_padrao.addItem(str(tamanho))
-        self.combo_tamanho_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_padrao)
-        self.combo_tamanho_fonte_padrao.view().setMouseTracking(True)
-        self.combo_tamanho_fonte_padrao.view().entered.connect(self.expandir_lista_tamanhos)
-        self.combo_tamanho_fonte_padrao.lineEdit().installEventFilter(self)
+            self.combo_tamanho_fonte_padrao.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_padrao)
+            self.combo_tamanho_fonte_padrao.view().setMouseTracking(True)
+            self.combo_tamanho_fonte_padrao.view().entered.connect(self.expandir_lista_tamanhos)
+            self.combo_tamanho_fonte_padrao.lineEdit().installEventFilter(self)
 
     def carregar_configuracoes(self):
         try:
@@ -1584,11 +1585,11 @@ class JanelaConfigPrograma(QWidget):
                     if fonte_alterada:
                         self.combo_fonte_usuario.setCurrentText(fonte_perso)
                     else:
-                        self.combo_fonte_usuario.setCurrentText(configuracao[2] if self.usuario_logado['is_admin'] else "")
+                        self.combo_fonte_usuario.setCurrentText(configuracao[2] if self.usuario_logado['is_admin'] and configuracao else "")
                     if tamanho_fonte_alterado:
                         self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
                     else:
-                        self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[3] if self.usuario_logado['is_admin'] else ""))
+                        self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[3] if self.usuario_logado['is_admin'] and configuracao else ""))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
@@ -1606,13 +1607,6 @@ class JanelaConfigPrograma(QWidget):
     def expandir_lista_tamanhos(self, _):
         self.combo_tamanho_fonte_padrao.showPopup()
 
-    def eventFilter(self, source, event):
-        if event.type() == QEvent.MouseButtonPress:
-            if source == self.combo_fonte_padrao.lineEdit():
-                self.combo_fonte_padrao.showPopup()
-            elif source == self.combo_tamanho_fonte_padrao.lineEdit():
-                self.combo_tamanho_fonte_padrao.showPopup()
-        return super().eventFilter(source, event)
     
     def carregar_fontes_usuario(self):
         fontes = QFontDatabase().families()
