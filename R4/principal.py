@@ -60,9 +60,10 @@ from modos import Modo  # Ensure this import is correct and the Modo class is de
 from criar_db import GerenciadorBancoDados
 #Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
-from scanner_rede import PingIP
+from scanner_rede import PingIP, RedeAtual
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QHeaderView
+from modos import ModosPrincipais
 
 #Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
 #Como a função de escanear a rede captura as informações nesse arquivo, é necessário inicializar as variáveis antes de chamar a função
@@ -596,7 +597,15 @@ class JanelaScannerRede(QWidget):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Scanner de Rede')
@@ -604,11 +613,11 @@ class JanelaScannerRede(QWidget):
         self.center()
 
         layout = QVBoxLayout()
-        
+
         self.botao_ping = QPushButton('PING', self)
         self.botao_ping.clicked.connect(self.abrir_janela_ping)
         layout.addWidget(self.botao_ping)
-    
+
         self.botao_escanear_rede = QPushButton('Escanear a própria rede', self)
         self.botao_escanear_rede.clicked.connect(self.abrir_janela_opcoes_scanner)
         layout.addWidget(self.botao_escanear_rede)
@@ -622,81 +631,6 @@ class JanelaScannerRede(QWidget):
         layout.addWidget(self.botao_voltar)
 
         self.setLayout(layout)
-
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    def abrir_janela_ping(self):
-        self.janela_ping = JanelaPing(self.usuario_logado, self.modo)
-        self.janela_ping.show()
-
-    def abrir_janela_opcoes_scanner(self):
-        self.janela_opcoes_scanner = JanelaOpcoesScanner(self.usuario_logado, self.modo)
-        self.janela_opcoes_scanner.show()
-
-    def abrir_janela_ver_informacoes(self):
-        self.janela_ver_informacoes = JanelaVerInformacoes(self.usuario_logado, self.modo)
-        self.janela_ver_informacoes.show()
-    def voltar_menu_principal(self):
-        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
-        self.janela_principal.show()
-        self.close()
-    def closeEvent(self, event):
-        self.voltar_menu_principal()
-        event.accept()
-
-    def mostrar_erro(self, mensagem):
-        QMessageBox.critical(self, 'Erro', mensagem)
-        self.show()
-
-    def __init__(self, usuario_logado, modo):
-        super().__init__()
-        self.usuario_logado = usuario_logado
-        self.modo = modo
-        self.fonte_padrao = None
-        self.tamanho_fonte_padrao = None
-        self.carregar_preferencias_usuario()
-        self.inicializarUI()
-        self.aplicar_modo()
-
-    def carregar_preferencias_usuario(self):
-        try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor(dictionary=True)
-                cursor.execute('''
-                    SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado, modo_tela
-                    FROM preferenciais_usuarios
-                    WHERE usuario_id = %s
-                ''', (self.usuario_logado['id'],))
-                preferencia = cursor.fetchone()
-
-                cursor.execute('''
-                    SELECT fonte_padrao, tamanho_fonte_padrao, modo_global
-                    FROM config_programa
-                    WHERE id = 1
-                ''')
-                config = cursor.fetchone()
-
-                if preferencia:
-                    self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
-                    self.fonte_padrao = preferencia['fonte_perso'] if preferencia['fonte_alterada'] == 1 else config['fonte_padrao']
-                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso'] if preferencia['tamanho_fonte_alterado'] == 1 else config['tamanho_fonte_padrao']
-                else:
-                    self.modo.modo_atual = 'escuro' if config['modo_global'] == 1 else 'claro'
-                    self.fonte_padrao = config['fonte_padrao']
-                    self.tamanho_fonte_padrao = config['tamanho_fonte_padrao']
-
-        except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
 
     def aplicar_modo(self):
         estilo = self.modo.atualizar_switch()
@@ -721,6 +655,37 @@ class JanelaScannerRede(QWidget):
         """)
         if self.fonte_padrao and self.tamanho_fonte_padrao:
             self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def abrir_janela_ping(self):
+        self.janela_ping = JanelaPing(self.usuario_logado, self.modo)
+        self.janela_ping.show()
+
+    def abrir_janela_opcoes_scanner(self):
+        self.janela_opcoes_scanner = JanelaOpcoesScanner(self.usuario_logado, self.modo)
+        self.janela_opcoes_scanner.show()
+
+    def abrir_janela_ver_informacoes(self):
+        self.janela_ver_informacoes = JanelaVerInformacoes(self.usuario_logado, self.modo)
+        self.janela_ver_informacoes.show()
+
+    def voltar_menu_principal(self):
+        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
+        self.janela_principal.show()
+        self.close()
+
+    def closeEvent(self, event):
+        self.voltar_menu_principal()
+        event.accept()
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
     
 #Inicio da classe JanelaPing
 class JanelaPing(QWidget):
@@ -728,7 +693,15 @@ class JanelaPing(QWidget):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario(self.usuario_logado['id'])
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Ping')
@@ -757,6 +730,30 @@ class JanelaPing(QWidget):
         
         self.setLayout(layout)
         self.atualizar_rede_atual()
+
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
 
     def center(self):
         qr = self.frameGeometry()
@@ -792,15 +789,10 @@ class JanelaPing(QWidget):
         except Exception as e:
             self.mostrar_erro(f"Erro ao fazer PING: {e}")
 
-    def voltar_menu_principal(self):
-        self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
-        self.janela_principal.show()
-
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaPing
-
+        
 #Inicio da classe JanelaOpcoesScanner
 class JanelaOpcoesScanner(QWidget):
     def __init__(self, usuario_logado, modo):
@@ -881,15 +873,7 @@ class JanelaOpcoesScanner(QWidget):
             escaneamento_rapido = self.checkbox_escanear_rapido.isChecked()
 
             # Importar e usar a classe ScannerRede do arquivo scanner_rede.py
-            scanner = ScannerRedeExterno(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port,
-                portas_selecionadas=portas_selecionadas,
-                escaneamento_rapido=escaneamento_rapido
-            )
+            scanner = ScannerRedeExterno(portas_selecionadas, escaneamento_rapido)
             resultados = scanner.escanear()
 
             if not resultados:
