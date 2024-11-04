@@ -651,8 +651,77 @@ class JanelaScannerRede(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaScannerRede
 
+    def __init__(self, usuario_logado, modo):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.modo = modo
+        self.fonte_padrao = None
+        self.tamanho_fonte_padrao = None
+        self.carregar_preferencias_usuario()
+        self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        try:
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conexao:
+                cursor = conexao.cursor(dictionary=True)
+                cursor.execute('''
+                    SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado, modo_tela
+                    FROM preferenciais_usuarios
+                    WHERE usuario_id = %s
+                ''', (self.usuario_logado['id'],))
+                preferencia = cursor.fetchone()
+
+                cursor.execute('''
+                    SELECT fonte_padrao, tamanho_fonte_padrao, modo_global
+                    FROM config_programa
+                    WHERE id = 1
+                ''')
+                config = cursor.fetchone()
+
+                if preferencia:
+                    self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
+                    self.fonte_padrao = preferencia['fonte_perso'] if preferencia['fonte_alterada'] == 1 else config['fonte_padrao']
+                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso'] if preferencia['tamanho_fonte_alterado'] == 1 else config['tamanho_fonte_padrao']
+                else:
+                    self.modo.modo_atual = 'escuro' if config['modo_global'] == 1 else 'claro'
+                    self.fonte_padrao = config['fonte_padrao']
+                    self.tamanho_fonte_padrao = config['tamanho_fonte_padrao']
+
+        except mysql.connector.Error as e:
+            self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
+
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
+    
 #Inicio da classe JanelaPing
 class JanelaPing(QWidget):
     def __init__(self, usuario_logado, modo):
