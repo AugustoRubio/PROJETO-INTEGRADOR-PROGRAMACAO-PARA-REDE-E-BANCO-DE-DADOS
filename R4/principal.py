@@ -699,7 +699,7 @@ class JanelaPing(QWidget):
 
     def carregar_preferencias_usuario(self):
         modos = ModosPrincipais()
-        modos.carregar_preferencias_usuario(self.usuario_logado['id'])
+        modos.carregar_preferencias_usuario()
         self.fonte_padrao = modos.fonte_padrao
         self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
