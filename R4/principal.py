@@ -35,7 +35,7 @@ DependencyChecker.check_and_install_dependencies()
 import sys
 import mysql.connector
 import hashlib
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer
 from PyQt5.QtGui import QFont
@@ -1090,13 +1090,14 @@ class JanelaResultadosData(QWidget):
         self.tabela_resultados.setColumnCount(5)
         self.tabela_resultados.setHorizontalHeaderLabels(['Data', 'Hostname', 'MAC Address', 'IP', 'Portas'])
         self.tabela_resultados.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.tabela_resultados.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         layout.addWidget(self.tabela_resultados)
 
         self.carregar_resultados()
 
         botao_fechar = QPushButton('Fechar', self)
         botao_fechar.clicked.connect(self.close)
-        layout.addWidget(botao_fechar)
+        layout.addWidget(botao_fechar, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
 
