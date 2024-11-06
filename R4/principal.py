@@ -1157,39 +1157,73 @@ class JanelaConfigUsuarios(QWidget):
         self.usuario_logado = usuario_logado
         self.modo = modo
         self.config_usuarios = ConfigUsuarios(usuario_logado, host, user, password, database, port)
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Configurações de Usuários')
         self.setGeometry(100, 100, 600, 400)
         self.center()
+        self.aplicar_modo()
 
         layout = QVBoxLayout()
 
         self.label_instrucoes = QLabel('Gerencie os usuários do sistema:', self)
-        layout.addWidget(self.label_instrucoes, alignment=Qt.AlignTop)
+        self.label_instrucoes.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.label_instrucoes)
 
         self.botao_adicionar_usuario = QPushButton('Adicionar Usuário', self)
         self.botao_adicionar_usuario.clicked.connect(self.adicionar_usuario)
-        layout.addWidget(self.botao_adicionar_usuario, alignment=Qt.AlignTop)
+        layout.addWidget(self.botao_adicionar_usuario)
 
-        self.botao_alterar_senha = QPushButton('Alterar senhas', self)
+        self.botao_alterar_senha = QPushButton('Alterar Senhas', self)
         self.botao_alterar_senha.clicked.connect(self.alterar_senha)
-        layout.addWidget(self.botao_alterar_senha, alignment=Qt.AlignTop)
+        layout.addWidget(self.botao_alterar_senha)
 
         self.botao_remover_usuario = QPushButton('Remover Usuário', self)
         self.botao_remover_usuario.clicked.connect(self.remover_usuario)
-        layout.addWidget(self.botao_remover_usuario, alignment=Qt.AlignTop)
+        layout.addWidget(self.botao_remover_usuario)
 
-        self.botao_ver_informacoes_usuarios = QPushButton('Ver informações e editar', self)
+        self.botao_ver_informacoes_usuarios = QPushButton('Ver Informações e Editar', self)
         self.botao_ver_informacoes_usuarios.clicked.connect(self.ver_informacoes_usuarios)
-        layout.addWidget(self.botao_ver_informacoes_usuarios, alignment=Qt.AlignTop)
+        layout.addWidget(self.botao_ver_informacoes_usuarios)
 
-        self.botao_voltar = QPushButton('Voltar ao menu principal', self)
+        self.botao_voltar = QPushButton('Voltar ao Menu Principal', self)
         self.botao_voltar.clicked.connect(self.voltar_menu_principal)
-        layout.addWidget(self.botao_voltar, alignment=Qt.AlignTop)
+        layout.addWidget(self.botao_voltar)
 
         self.setLayout(layout)
+
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
 
     def center(self):
         qr = self.frameGeometry()
@@ -1199,6 +1233,7 @@ class JanelaConfigUsuarios(QWidget):
 
     def closeEvent(self, event):
         self.voltar_menu_principal()
+        super().closeEvent(event)
 
     def voltar_menu_principal(self):
         self.janela_principal = JanelaPrincipal(self.usuario_logado, self.modo)
@@ -1213,6 +1248,7 @@ class JanelaConfigUsuarios(QWidget):
         self.janela_adicionar = QWidget()
         self.janela_adicionar.setWindowTitle('Adicionar Usuário')
         self.janela_adicionar.setGeometry(100, 100, 400, 300)
+        self.janela_adicionar.setStyleSheet(self.styleSheet())
         layout = QVBoxLayout()
 
         self.input_usuario = QLineEdit(self.janela_adicionar)
@@ -1237,11 +1273,11 @@ class JanelaConfigUsuarios(QWidget):
 
         botao_salvar = QPushButton('Salvar', self.janela_adicionar)
         botao_salvar.clicked.connect(self.salvar_novo_usuario)
-        layout.addWidget(botao_salvar)
+        layout.addWidget(botao_salvar, alignment=Qt.AlignCenter)
 
         botao_cancelar = QPushButton('Cancelar', self.janela_adicionar)
         botao_cancelar.clicked.connect(self.janela_adicionar.close)
-        layout.addWidget(botao_cancelar)
+        layout.addWidget(botao_cancelar, alignment=Qt.AlignCenter)
 
         self.janela_adicionar.setLayout(layout)
         self.janela_adicionar.show()
@@ -1258,10 +1294,8 @@ class JanelaConfigUsuarios(QWidget):
             return
 
         try:
-            # Adicionar o usuário
             self.config_usuarios.adicionar_usuario(usuario, nome_completo, email, senha, is_admin)
 
-            # Após adicionar o usuário, insere as preferências padrão na tabela preferenciais_usuarios
             conexao = mysql.connector.connect(
                 host=host,
                 user=user,
@@ -1270,10 +1304,8 @@ class JanelaConfigUsuarios(QWidget):
                 port=port
             )
             cursor = conexao.cursor()
-            # Obtém o ID do novo usuário
             cursor.execute("SELECT id FROM usuarios WHERE usuario = %s", (usuario,))
             usuario_id = cursor.fetchone()[0]
-            # Insere as preferências padrão
             cursor.execute('''
                 INSERT INTO preferenciais_usuarios (
                     usuario_id,
@@ -1303,9 +1335,11 @@ class JanelaConfigUsuarios(QWidget):
         self.janela_remover = QWidget()
         self.janela_remover.setWindowTitle('Remover Usuário')
         self.janela_remover.setGeometry(100, 100, 600, 400)
+        self.janela_remover.setStyleSheet(self.styleSheet())
         layout = QVBoxLayout()
 
         self.label_instrucoes = QLabel('Selecione o usuário a remover:', self.janela_remover)
+        self.label_instrucoes.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.label_instrucoes)
 
         self.lista_usuarios_remover = QListWidget(self.janela_remover)
@@ -1324,11 +1358,11 @@ class JanelaConfigUsuarios(QWidget):
 
         botao_remover = QPushButton('Remover', self.janela_remover)
         botao_remover.clicked.connect(self.confirmar_remocao_usuario)
-        layout.addWidget(botao_remover)
+        layout.addWidget(botao_remover, alignment=Qt.AlignCenter)
 
         botao_cancelar = QPushButton('Cancelar', self.janela_remover)
         botao_cancelar.clicked.connect(self.janela_remover.close)
-        layout.addWidget(botao_cancelar)
+        layout.addWidget(botao_cancelar, alignment=Qt.AlignCenter)
 
         self.janela_remover.setLayout(layout)
         self.janela_remover.show()
@@ -1358,10 +1392,12 @@ class JanelaConfigUsuarios(QWidget):
             width = 800
             height = 100 + (len(usuarios) * 30) if usuarios else 200
             self.janela_ver_usuarios.setGeometry(100, 100, width, height)
+            self.janela_ver_usuarios.setStyleSheet(self.styleSheet())
             layout = QVBoxLayout()
 
             if not usuarios:
                 label_usuario = QLabel("Nenhum usuário encontrado.")
+                label_usuario.setAlignment(Qt.AlignCenter)
                 layout.addWidget(label_usuario)
             else:
                 self.lista_usuarios = QListWidget(self.janela_ver_usuarios)
@@ -1375,11 +1411,11 @@ class JanelaConfigUsuarios(QWidget):
                 if self.usuario_logado['is_admin']:
                     botao_editar = QPushButton('Editar', self.janela_ver_usuarios)
                     botao_editar.clicked.connect(self.editar_usuario_selecionado)
-                    layout.addWidget(botao_editar)
+                    layout.addWidget(botao_editar, alignment=Qt.AlignCenter)
 
             botao_fechar = QPushButton('Fechar', self.janela_ver_usuarios)
             botao_fechar.clicked.connect(self.janela_ver_usuarios.close)
-            layout.addWidget(botao_fechar)
+            layout.addWidget(botao_fechar, alignment=Qt.AlignCenter)
 
             self.janela_ver_usuarios.setLayout(layout)
             self.janela_ver_usuarios.show()
@@ -1398,6 +1434,7 @@ class JanelaConfigUsuarios(QWidget):
         self.janela_edicao = QWidget()
         self.janela_edicao.setWindowTitle('Editar Informações do Usuário')
         self.janela_edicao.setGeometry(100, 100, 400, 300)
+        self.janela_edicao.setStyleSheet(self.styleSheet())
         layout = QVBoxLayout()
 
         id_usuario, nome_usuario, nome_completo, email, is_admin = usuario
@@ -1423,11 +1460,11 @@ class JanelaConfigUsuarios(QWidget):
 
         botao_salvar = QPushButton('Salvar', self.janela_edicao)
         botao_salvar.clicked.connect(lambda: self.salvar_edicao_usuario(id_usuario))
-        layout.addWidget(botao_salvar)
+        layout.addWidget(botao_salvar, alignment=Qt.AlignCenter)
 
         botao_cancelar = QPushButton('Cancelar', self.janela_edicao)
         botao_cancelar.clicked.connect(self.janela_edicao.close)
-        layout.addWidget(botao_cancelar)
+        layout.addWidget(botao_cancelar, alignment=Qt.AlignCenter)
 
         self.janela_edicao.setLayout(layout)
         self.janela_edicao.show()
@@ -1453,9 +1490,11 @@ class JanelaConfigUsuarios(QWidget):
             self.janela_selecionar_usuario = QWidget()
             self.janela_selecionar_usuario.setWindowTitle('Selecionar Usuário para Alterar Senha')
             self.janela_selecionar_usuario.setGeometry(100, 100, 600, 400)
+            self.janela_selecionar_usuario.setStyleSheet(self.styleSheet())
             layout = QVBoxLayout()
 
             self.label_instrucoes = QLabel('Selecione o usuário para alterar a senha:', self.janela_selecionar_usuario)
+            self.label_instrucoes.setAlignment(Qt.AlignCenter)
             layout.addWidget(self.label_instrucoes)
 
             self.lista_usuarios = QListWidget(self.janela_selecionar_usuario)
@@ -1474,11 +1513,11 @@ class JanelaConfigUsuarios(QWidget):
 
             botao_selecionar = QPushButton('Selecionar', self.janela_selecionar_usuario)
             botao_selecionar.clicked.connect(self.selecionar_usuario_para_alterar_senha)
-            layout.addWidget(botao_selecionar)
+            layout.addWidget(botao_selecionar, alignment=Qt.AlignCenter)
 
             botao_cancelar = QPushButton('Cancelar', self.janela_selecionar_usuario)
             botao_cancelar.clicked.connect(self.janela_selecionar_usuario.close)
-            layout.addWidget(botao_cancelar)
+            layout.addWidget(botao_cancelar, alignment=Qt.AlignCenter)
 
             self.janela_selecionar_usuario.setLayout(layout)
             self.janela_selecionar_usuario.show()
@@ -1496,6 +1535,7 @@ class JanelaConfigUsuarios(QWidget):
         self.janela_alterar_senha = QWidget()
         self.janela_alterar_senha.setWindowTitle('Alterar Senha')
         self.janela_alterar_senha.setGeometry(100, 100, 400, 300)
+        self.janela_alterar_senha.setStyleSheet(self.styleSheet())
         layout = QVBoxLayout()
 
         self.input_nova_senha = QLineEdit(self.janela_alterar_senha)
@@ -1510,11 +1550,11 @@ class JanelaConfigUsuarios(QWidget):
 
         botao_salvar = QPushButton('Salvar', self.janela_alterar_senha)
         botao_salvar.clicked.connect(lambda: self.salvar_nova_senha(usuario_id))
-        layout.addWidget(botao_salvar)
+        layout.addWidget(botao_salvar, alignment=Qt.AlignCenter)
 
         botao_cancelar = QPushButton('Cancelar', self.janela_alterar_senha)
         botao_cancelar.clicked.connect(self.janela_alterar_senha.close)
-        layout.addWidget(botao_cancelar)
+        layout.addWidget(botao_cancelar, alignment=Qt.AlignCenter)
 
         self.janela_alterar_senha.setLayout(layout)
         self.janela_alterar_senha.show()
