@@ -793,13 +793,21 @@ class JanelaPing(QWidget):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
         
-#Inicio da classe JanelaOpcoesScanner
+# Inicio da classe JanelaOpcoesScanner
 class JanelaOpcoesScanner(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Opções de Scanner de Rede')
@@ -808,39 +816,49 @@ class JanelaOpcoesScanner(QWidget):
 
         layout = QVBoxLayout()
 
-        # Adicionar label para mostrar a rede atual do usuário
-        self.label_rede_atual = QLabel('Rede Atual: Obtendo...', self)
-        layout.addWidget(self.label_rede_atual)
+        self.checkbox_escaneamento_rapido = QCheckBox('Escaneamento Rápido', self)
+        self.checkbox_escaneamento_rapido.setChecked(True)
+        self.checkbox_escaneamento_rapido.stateChanged.connect(self.atualizar_checkboxes)
+        layout.addWidget(self.checkbox_escaneamento_rapido)
 
-        # Adicionar checkboxes para seleção de portas
-        self.checkbox_escanear_rapido = QCheckBox('Escaneamento Rápido', self)
-        self.checkbox_escanear_rapido.setChecked(True)
-        layout.addWidget(self.checkbox_escanear_rapido)
+        self.checkbox_escaneamento_completo = QCheckBox('Escaneamento Completo', self)
+        self.checkbox_escaneamento_completo.stateChanged.connect(self.atualizar_checkboxes)
+        layout.addWidget(self.checkbox_escaneamento_completo)
 
-        self.checkbox_porta_22 = QCheckBox('Porta 22 (SSH)', self)
-        self.checkbox_porta_22.setChecked(False)
+        self.checkbox_porta_22 = QCheckBox('Porta 22', self)
         layout.addWidget(self.checkbox_porta_22)
 
-        self.checkbox_porta_80 = QCheckBox('Porta 80 (HTTP)', self)
-        self.checkbox_porta_80.setChecked(False)
+        self.checkbox_porta_80 = QCheckBox('Porta 80', self)
         layout.addWidget(self.checkbox_porta_80)
 
-        self.checkbox_porta_443 = QCheckBox('Porta 443 (HTTPS)', self)
-        self.checkbox_porta_443.setChecked(False)
+        self.checkbox_porta_443 = QCheckBox('Porta 443', self)
         layout.addWidget(self.checkbox_porta_443)
 
-        self.botao_escanear_rede = QPushButton('Escanear', self)
-        self.botao_escanear_rede.clicked.connect(self.escanear_rede)
-        layout.addWidget(self.botao_escanear_rede)
-
-        self.botao_voltar = QPushButton('Voltar', self)
-        self.botao_voltar.clicked.connect(self.close)
-        layout.addWidget(self.botao_voltar)
+        self.botao_iniciar_scanner = QPushButton('Iniciar Scanner', self)
+        self.botao_iniciar_scanner.clicked.connect(self.iniciar_scanner)
+        layout.addWidget(self.botao_iniciar_scanner)
 
         self.setLayout(layout)
 
-        # Atualizar a rede atual do usuário
-        self.atualizar_rede_atual()
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QCheckBox {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
 
     def center(self):
         qr = self.frameGeometry()
@@ -848,128 +866,85 @@ class JanelaOpcoesScanner(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def atualizar_rede_atual(self):
-        try:
-            rede_atual = RedeAtual()
-            rede = rede_atual.obter_rede_atual()
+    def atualizar_checkboxes(self):
+        if self.checkbox_escaneamento_rapido.isChecked():
+            self.checkbox_escaneamento_completo.setChecked(False)
+        elif self.checkbox_escaneamento_completo.isChecked():
+            self.checkbox_escaneamento_rapido.setChecked(False)
 
-            if rede:
-                self.label_rede_atual.setText(f"Rede Atual: {rede}")
-            else:
-                self.label_rede_atual.setText("Erro ao obter rede")
-        except Exception as e:
-            self.mostrar_erro(f"Erro ao atualizar rede atual: {e}")
+    def iniciar_scanner(self):
+        escaneamento_rapido = self.checkbox_escaneamento_rapido.isChecked()
+        portas_selecionadas = []
+        if self.checkbox_porta_22.isChecked():
+            portas_selecionadas.append('22')
+        if self.checkbox_porta_80.isChecked():
+            portas_selecionadas.append('80')
+        if self.checkbox_porta_443.isChecked():
+            portas_selecionadas.append('443')
 
-    def escanear_rede(self):
-        try:
-            portas_selecionadas = []
-            if self.checkbox_porta_22.isChecked():
-                portas_selecionadas.append('22')
-            if self.checkbox_porta_80.isChecked():
-                portas_selecionadas.append('80')
-            if self.checkbox_porta_443.isChecked():
-                portas_selecionadas.append('443')
+        scanner = ScannerRedeExterno(host, user, password, database, port)
+        scanner.escaneamento_rapido = escaneamento_rapido
+        scanner.portas_selecionadas = portas_selecionadas
+        resultados = scanner.escanear()
 
-            escaneamento_rapido = self.checkbox_escanear_rapido.isChecked()
-
-            # Importar e usar a classe ScannerRede do arquivo scanner_rede.py
-            scanner = ScannerRedeExterno(portas_selecionadas, escaneamento_rapido)
-            resultados = scanner.escanear()
-
-            if not resultados:
-                self.salvar_resultado_vazio()
-
-            # Salvar os resultados no banco de dados
-            self.salvar_resultados(resultados)
-
-            # Exibir os resultados em uma nova janela
-            self.mostrar_resultados(resultados)
-        except Exception as e:
-            self.mostrar_erro(f"Erro ao escanear rede: {e}")
-
-    def salvar_resultado_vazio(self):
-        try:
-            conexao = mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            )
-            cursor = conexao.cursor()
-            cursor.execute('''
-                INSERT INTO scanner (data, hostname, mac_address, ip, portas)
-                VALUES (%s, %s, %s, %s, %s)
-            ''', (datetime.now(), 'N/A', 'N/A', 'Nenhum IP encontrado', 'N/A'))
-            conexao.commit()
-        except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao salvar resultado vazio: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
-
-    def salvar_resultados(self, resultados):
-        try:
-            conexao = mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            )
-            cursor = conexao.cursor()
-            for resultado in resultados:
-                cursor.execute('''
-                    SELECT COUNT(*) FROM scanner WHERE hostname = %s AND mac_address = %s AND ip = %s
-                ''', (resultado[0], resultado[1], resultado[2]))
-                count = cursor.fetchone()[0]
-                if count == 0:
-                    cursor.execute('''
-                        INSERT INTO scanner (data, hostname, mac_address, ip, portas)
-                        VALUES (%s, %s, %s, %s, %s)
-                    ''', (datetime.now(), resultado[0], resultado[1], resultado[2], ', '.join(resultado[3])))
-            conexao.commit()
-        except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao salvar resultados: {e}")
-        finally:
-            if conexao.is_connected():
-                cursor.close()
-                conexao.close()
-
-    def mostrar_resultados(self, resultados):
-        self.janela_resultados = QWidget()
-        self.janela_resultados.setWindowTitle('Resultados do Escaneamento')
-        self.janela_resultados.setGeometry(100, 100, 600, 400)
-        layout = QVBoxLayout()
-
-        texto_resultados = "\n".join([
-            f"Nome do Host: {r[0]} | MAC: {r[1]} | IP: {r[2]} | Portas: {r[3]}"
-            for r in resultados
-        ])
-        label_resultados = QLabel(texto_resultados)
-        label_resultados.setAlignment(Qt.AlignTop)
-        layout.addWidget(label_resultados)
-
-        botao_fechar = QPushButton('Fechar', self.janela_resultados)
-        botao_fechar.clicked.connect(self.janela_resultados.close)
-        layout.addWidget(botao_fechar)
-
-        self.janela_resultados.setLayout(layout)
+        self.janela_resultados = JanelaResultadosScanner(self.usuario_logado, self.modo, resultados)
         self.janela_resultados.show()
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication(sys.argv)
-        app.exec_()
-
-        # Check if the scan is completed and show a message
-        if hasattr(self, 'escaneamento_concluido') and self.escaneamento_concluido:
-            QMessageBox.information(self.janela_resultados, 'Escaneamento Concluído', 'O escaneamento foi concluído com sucesso!')
+        self.close()
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaOpcoesScanner
+# Fim da classe JanelaOpcoesScanner
+
+#Inicio da classe JanelaResultadosScanner
+class JanelaResultadosScanner(QWidget):
+    def __init__(self, usuario_logado, modo, resultados):
+        super().__init__()
+        self.usuario_logado = usuario_logado
+        self.modo = modo
+        self.resultados = resultados
+        self.inicializarUI()
+
+    def inicializarUI(self):
+        self.setWindowTitle('Resultados do Scanner de Rede')
+        self.setGeometry(100, 100, 800, 600)
+        self.center()
+
+        layout = QVBoxLayout()
+
+        self.tabela_resultados = QTableWidget(self)
+        self.tabela_resultados.setColumnCount(4)
+        self.tabela_resultados.setHorizontalHeaderLabels(['Hostname', 'MAC Address', 'IP', 'Portas'])
+        self.tabela_resultados.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        layout.addWidget(self.tabela_resultados)
+
+        self.carregar_resultados()
+
+        botao_fechar = QPushButton('Fechar', self)
+        botao_fechar.clicked.connect(self.close)
+        layout.addWidget(botao_fechar)
+
+        self.setLayout(layout)
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def carregar_resultados(self):
+        self.tabela_resultados.setRowCount(0)
+        for resultado in self.resultados:
+            row_position = self.tabela_resultados.rowCount()
+            self.tabela_resultados.insertRow(row_position)
+            for column, data in enumerate(resultado):
+                self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
+        self.tabela_resultados.resizeColumnsToContents()
+
+    def mostrar_erro(self, mensagem):
+        QMessageBox.critical(self, 'Erro', mensagem)
+        self.show()
+#Fim da classe JanelaResultadosScanner
 
 #Inicio da classe JanelaVerInformacoes
 class JanelaVerInformacoes(QWidget):
