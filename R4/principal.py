@@ -984,7 +984,15 @@ class JanelaVerInformacoes(QWidget):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Informações Armazenadas')
@@ -1012,6 +1020,30 @@ class JanelaVerInformacoes(QWidget):
 
         self.setLayout(layout)
 
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
+
     def center(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
@@ -1030,7 +1062,6 @@ class JanelaVerInformacoes(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaVerInformacoes
 
 class JanelaResultadosData(QWidget):
     def __init__(self, usuario_logado, modo, data_selecionada):
@@ -1038,7 +1069,15 @@ class JanelaResultadosData(QWidget):
         self.usuario_logado = usuario_logado
         self.modo = modo
         self.data_selecionada = data_selecionada
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle(f'Resultados para {self.data_selecionada}')
@@ -1060,6 +1099,51 @@ class JanelaResultadosData(QWidget):
         layout.addWidget(botao_fechar)
 
         self.setLayout(layout)
+
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+            border: {estilo["botao"]["border"]};
+            border-radius: {estilo["botao"]["border-radius"]};
+            padding: {estilo["botao"]["padding"]};
+            text-align: {estilo["botao"]["text-align"]};
+            padding-right: {estilo["botao"].get("padding-right", "0px")};
+            padding-left: {estilo["botao"].get("padding-left", "0px")};
+        }}
+        QPushButton:checked {{
+            background-color: {estilo["botao_checked"]["background-color"]};
+            color: {estilo["botao_checked"]["color"]};
+            text-align: {estilo["botao_checked"]["text-align"]};
+            padding-right: {estilo["botao_checked"].get("padding-right", "0px")};
+            padding-left: {estilo["botao_checked"].get("padding-left", "0px")};
+        }}
+        QTableWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+        }}
+        QHeaderView::section {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
 
     def center(self):
         qr = self.frameGeometry()
