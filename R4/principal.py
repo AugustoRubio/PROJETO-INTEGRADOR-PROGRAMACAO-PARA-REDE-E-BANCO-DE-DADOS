@@ -903,7 +903,15 @@ class JanelaResultadosScanner(QWidget):
         self.usuario_logado = usuario_logado
         self.modo = modo
         self.resultados = resultados
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Resultados do Scanner de Rede')
@@ -941,10 +949,34 @@ class JanelaResultadosScanner(QWidget):
                 self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
         self.tabela_resultados.resizeColumnsToContents()
 
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QTableWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+        }}
+        QHeaderView::section {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
+
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-#Fim da classe JanelaResultadosScanner
 
 #Inicio da classe JanelaVerInformacoes
 class JanelaVerInformacoes(QWidget):
