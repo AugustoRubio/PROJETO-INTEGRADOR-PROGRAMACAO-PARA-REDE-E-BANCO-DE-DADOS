@@ -12,17 +12,17 @@ import importlib.util
 class DependencyChecker:
     @staticmethod
     def check_and_install_dependencies():
-        dependencies = [
-            "PyQt5",
-            "requests",
-            "python-nmap",
-            "mysql-connector-python"
-        ]
+        dependencies = {
+            "PyQt5": "PyQt5",
+            "requests": "requests",
+            "nmap": "python-nmap",
+            "mysql.connector": "mysql-connector-python"
+        }
 
         missing_dependencies = []
-        for dependency in dependencies:
-            if not importlib.util.find_spec(dependency):
-                missing_dependencies.append(dependency)
+        for module, package in dependencies.items():
+            if not importlib.util.find_spec(module):
+                missing_dependencies.append(package)
 
         if missing_dependencies:
             print(f"Instalando dependências ausentes: {', '.join(missing_dependencies)}")
