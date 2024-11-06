@@ -1,11 +1,3 @@
-#Arquivo principal é o responsável por iniciar a aplicação e construir as janelas gráficas.
-#Usando as bibliotecas sys (para acessar variáveis do sistema), sqlite3 (para acessar o banco de dados), hashlib (para criptografar a senha)
-#Usando as bibliotecas QtWidgets (para criar a interface gráfica), QDesktopWidget (para centralizar a janela na tela), QCheckBox (para criar caixas de seleção), QListWidget (para criar listas), QListWidgetItem (para adicionar itens na lista), QCalendarWidget (para criar um calendário), QComboBox (para criar uma caixa de seleção);
-#QTableWidget (para criar tabelas), QTableWidgetItem (para adicionar itens na tabela), QVBoxLayout (para organizar os widgets verticalmente), QHBoxLayout (para organizar os widgets horizontalmente), QWidget (classe base para todos os widgets), QLabel (para adicionar texto), QLineEdit (para adicionar campos de entrada de texto);
-#QPushButton (para adicionar botões), QMessageBox (para exibir mensagens), QPixmap (para exibir imagens), QFont (para definir a fonte), QMovie (para exibir gifs), QIcon (para adicionar ícones), QFontDatabase (para acessar a base de dados de fontes), QEvent (para eventos), QTimer (para temporizadores)
-#Usando as classes ScannerRede e ScannerRedeExterno do arquivo scanner_rede.py, a Classe ConfigUsuarios do arquivo usuarios.py, a Classe ConfigProgramaDB do arquivo config_programa.py, a Classe modo do arquivo modos.py, a Classe GerenciadorBancoDados do arquivo criar_db.py
-#Usando as classes MonitorDeHardware e ExtratorDeInfoHardware do arquivo dashboard.py
-#Importação de bibliotecas
 import sys
 import subprocess
 import importlib.util
@@ -52,8 +44,6 @@ except ImportError:
 from datetime import datetime
 #Importa as classes do arquivo usuarios.py, que cuida das funções de adicionar, editar, remover e listar usuários do banco de dados
 from usuarios import ConfigUsuarios
-#Importa as classes do arquivo config_programa.py, que cuida das funções de adicionar, editar e remover configurações do programa no banco de dados
-from config_programa import ConfiguracaoProgramaDB
 #Importa as classes do arquivo modos.py, que cuida das funções de trocar o modo de cores do programa
 from modos import Modo  # Ensure this import is correct and the Modo class is defined in modos.py
 #Importa as classes do arquivo criar_db.py, que cuida das funções de criar o banco de dados e verificar se o banco de dados já existe
@@ -65,26 +55,13 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QHeaderView
 from modos import ModosPrincipais
 
-#Começamos inicializando algumas variáveis do Scanner de Rede para que não ocorra erro de variável não definida
-#Como a função de escanear a rede captura as informações nesse arquivo, é necessário inicializar as variáveis antes de chamar a função
-#Essas variáveis são necessárias para a execução da função de escanear a rede
-#Inicio da Classe JanelaVerInformacoes
 class ScannerRede:
-    #Inicializamos as variáveis que serão utilizadas na função de escanear a rede
-    #Essas variáveis receberam os valores necesseários quando a função for chamada
     def __init__(self, portas_selecionadas, escaneamento_rapido):
-        #Fazemos a inicialização das variáveis usando os valores passados como parâmetro e atribuimos o self para que possam ser acessadas em outras funções
         self.portas_selecionadas = portas_selecionadas
         self.escaneamento_rapido = escaneamento_rapido
-    #Essa função é necessária para canaliar a recepção de dados para a função de escanear a rede e enviar os dados para o outro script
     def escanear(self):
-        #Retornamos um valor padrão para que não ocorra erro de variável não definida.        
         return [("Host1", "00:11:22:33:44:55", "192.168.1.1", self.portas_selecionadas)]
-#Fim da classe ScannerRede
 
-#Essa classe executa uma checagem do banco de dados, removendo a necessidade de executar o script criar_db.py
-#O script criar_db.py é executado automaticamente ao iniciar a aplicação, verificando se o banco de dados já existe e criando-o caso não exista
-#Inicio da classe VerificarBancoDados
 class VerificadorBancoDados:
     def __init__(self, host, user, password, database, port):
         self.host = host
@@ -98,18 +75,11 @@ class VerificadorBancoDados:
         gerenciador_bd.criar_tabelas()
         print(f"Banco de dados verificado/criado com sucesso: {self.database}")
 
-# Aqui verificamos se o script foi executado pelo arquivo gerado pelo PyInstaller ou se foi executado diretamente pelo arquivo principal.py
-# Se o script foi executado pelo arquivo gerado pelo PyInstaller, usamos o caminho do executável, para que seja possível acessar os arquivos necessários como a pasta de apoio
-# Se o script foi executado diretamente pelo arquivo principal.py, usamos o caminho do arquivo principal.py que seria a raiz do projeto
-# Usamos a função getattr para verificar se o script foi empacotado pelo PyInstaller, passamos o sys como parâmetro e o atributo 'frozen' que é um atributo que é definido quando o script é empacotado pelo PyInstaller
 if getattr(sys, 'frozen', False):
-    # Se o script foi empacotado pelo PyInstaller, usamos o caminho do executável
     script_dir = os.path.dirname(sys.executable)
 else:
-    # Se o script estiver sendo executado normalmente, use o caminho do script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Reforçamos o caminho do banco de dados, juntando o caminho do script com o nome do banco de dados
 config = configparser.ConfigParser()
 config.read(os.path.join(script_dir, 'config.ini'))
 
@@ -122,8 +92,6 @@ port = config['mysql'].getint('port')
 verificador_bd = VerificadorBancoDados(host, user, password, database, port)
 verificador_bd.verificar_ou_criar_bd()
 
-#Aqui criamos a aplicação gráfica.
-#A aplicação é criada usando a classe QWidget que é a classe base para todos os widgets
 class JanelaLogin(QWidget):
     def __init__(self):
         super().__init__()
