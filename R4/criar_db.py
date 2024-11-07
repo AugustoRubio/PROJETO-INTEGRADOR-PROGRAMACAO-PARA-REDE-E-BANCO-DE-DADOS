@@ -83,11 +83,6 @@ class GerenciadorBancoDados:
                     )
                 ''')
 
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                apoio_dir = os.path.join(script_dir, "apoio")
-                if not os.path.exists(apoio_dir):
-                    os.makedirs(apoio_dir)
-
                 cursor.execute('SELECT COUNT(*) FROM config_programa WHERE id = 1')
                 config_exists = cursor.fetchone()[0]
 
@@ -96,13 +91,13 @@ class GerenciadorBancoDados:
                         INSERT INTO config_programa (id, data, logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global, icone_modo_escuro, icone_modo_claro) 
                         VALUES (1, NOW(), %s, %s, %s, %s, %s, %s, %s)
                     ''', (
-                        os.path.join(apoio_dir, "LOGO_R3.png"),
-                        os.path.join(apoio_dir, "LOGO_R6.png"),
+                        "https://augusto.tec.br/pi/logo_principal.png",
+                        "https://augusto.tec.br/pi/logo_rodape.png",
                         "Arial",
                         18,
                         0,
-                        os.path.join(apoio_dir, "night-mode.png"),
-                        os.path.join(apoio_dir, "sun-mode.png")
+                        "https://augusto.tec.br/pi/night-mode.png",
+                        "https://augusto.tec.br/pi/sun-mode.png"
                     ))
                     print("Configuração padrão inserida com sucesso.")
                 else:

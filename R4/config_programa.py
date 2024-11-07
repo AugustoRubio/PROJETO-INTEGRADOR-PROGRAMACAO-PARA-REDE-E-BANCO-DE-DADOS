@@ -85,7 +85,4 @@ class ConfiguracaoProgramaDB:
 if __name__ == "__main__":
     import sys
     app = QApplication(sys.argv)
-    config_db = ConfiguracaoProgramaDB('/caminho/para/seu/banco_de_dados.db', app)
-    # Agora você pode chamar os métodos da classe, por exemplo:
-    # config_db.selecionar_imagem()
     sys.exit(app.exec_())

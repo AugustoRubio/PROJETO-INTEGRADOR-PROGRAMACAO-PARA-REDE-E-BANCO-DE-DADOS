@@ -29,11 +29,12 @@ import mysql.connector
 import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
-from PyQt5.QtCore import Qt, QEvent, QTimer
+from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray
 from PyQt5.QtGui import QFont
 
 import os
 import configparser
+import requests
 #Para evitar erros de variável não definida, inicializamos as variáveis do Scanner de Rede usando o try e except
 try:
     from scanner_rede import RedeAtual, ScannerRede as ScannerRedeExterno
@@ -132,13 +133,21 @@ class JanelaLogin(QWidget):
         if self.logo_principal:
             self.label_logo_principal = QLabel(self)
             self.label_logo_principal.setAlignment(Qt.AlignCenter)
-            if self.logo_principal.endswith('.gif'):
-                self.movie_logo_principal = QMovie(self.logo_principal)
-                self.label_logo_principal.setMovie(self.movie_logo_principal)
-                self.movie_logo_principal.start()
-            else:
-                self.pixmap_logo_principal = QPixmap(self.logo_principal)
-                self.label_logo_principal.setPixmap(self.pixmap_logo_principal.scaled(self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            try:
+                response = requests.get(self.logo_principal)
+                response.raise_for_status()
+                image_data = response.content
+                if self.logo_principal.endswith('.gif'):
+                    self.gif_logo_principal_byte_array = QByteArray(image_data)
+                    self.movie_logo_principal = QMovie(self.gif_logo_principal_byte_array)
+                    self.label_logo_principal.setMovie(self.movie_logo_principal)
+                    self.movie_logo_principal.start()
+                else:
+                    self.pixmap_logo_principal = QPixmap()
+                    self.pixmap_logo_principal.loadFromData(image_data)
+                    self.label_logo_principal.setPixmap(self.pixmap_logo_principal.scaled(self.width(), self.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            except Exception as e:
+                self.mostrar_erro(f"Erro ao carregar logo principal: {e}")
             self.layout.addWidget(self.label_logo_principal)
 
         if self.fonte_padrao and self.tamanho_fonte_padrao:
@@ -177,8 +186,15 @@ class JanelaLogin(QWidget):
         if self.logo_rodape:
             self.label_logo_rodape = QLabel(self)
             self.label_logo_rodape.setAlignment(Qt.AlignCenter)
-            self.pixmap_logo_rodape = QPixmap(self.logo_rodape)
-            self.label_logo_rodape.setPixmap(self.pixmap_logo_rodape.scaled(200, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            try:
+                response = requests.get(self.logo_rodape)
+                response.raise_for_status()
+                image_data = response.content
+                self.pixmap_logo_rodape = QPixmap()
+                self.pixmap_logo_rodape.loadFromData(image_data)
+                self.label_logo_rodape.setPixmap(self.pixmap_logo_rodape.scaled(200, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            except Exception as e:
+                self.mostrar_erro(f"Erro ao carregar logo rodapé: {e}")
             self.layout.addWidget(self.label_logo_rodape)
 
         self.aplicar_modo()
