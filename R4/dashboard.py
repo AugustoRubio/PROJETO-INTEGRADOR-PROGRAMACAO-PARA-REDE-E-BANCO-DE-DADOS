@@ -62,7 +62,9 @@ class ExtratorDeInfoHardware:
     @staticmethod
     # Obtém informações de hardware extraídas de todos os nós filhos
     def obter_info(info_hardware):
-        return [ExtratorDeInfoHardware.extrair_info(hardware) for hardware in info_hardware.get('Children', [])]
+        if isinstance(info_hardware, dict):
+            return [ExtratorDeInfoHardware.extrair_info(hardware) for hardware in info_hardware.get('Children', [])]
+        return []
 
     @staticmethod
     # Encontra sensores específicos dentro das informações extraídas
