@@ -464,10 +464,7 @@ class JanelaPrincipal(QWidget):
         reply.exec_()
 
         if reply.clickedButton() == button_yes:
-            if event:
-                event.accept()
-            else:
-                self.close()
+            QApplication.instance().quit()
         else:
             if event:
                 event.ignore()
