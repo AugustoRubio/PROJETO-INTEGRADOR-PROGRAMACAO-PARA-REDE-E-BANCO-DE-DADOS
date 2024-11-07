@@ -1373,12 +1373,24 @@ class JanelaConfigUsuarios(QWidget):
         usuario = item_selecionado.data(Qt.UserRole)
         usuario_id = usuario[0]
 
-        try:
-            self.config_usuarios.remover_usuario(usuario_id)
-            QMessageBox.information(self, 'Sucesso', 'Usuário removido com sucesso.')
-            self.janela_remover.close()
-        except Exception as e:
-            self.mostrar_erro(f"Erro ao remover usuário: {e}")
+        reply = QMessageBox.question(
+            self,
+            'Confirmar Remoção',
+            f'Tem certeza que deseja remover o usuário "{usuario[1]}"?',
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            try:
+                self.config_usuarios.remover_usuario(usuario_id)
+                QMessageBox.information(self, 'Sucesso', 'Usuário removido com sucesso.')
+                self.janela_remover.close()
+            except Exception as e:
+                self.mostrar_erro(f"Erro ao remover usuário: {e}")
+        else:
+            # Usuário clicou 'Não', não faz nada
+            pass
 
     def ver_informacoes_usuarios(self):
         try:

@@ -47,6 +47,9 @@ class ConfigUsuarios:
 
         with self._connect() as conexao:
             cursor = conexao.cursor()
+            # Remover das preferências do usuário
+            cursor.execute('DELETE FROM preferenciais_usuarios WHERE usuario_id = %s', (usuario_id,))
+            # Remover da tabela de usuários
             cursor.execute('DELETE FROM usuarios WHERE id = %s', (usuario_id,))
             conexao.commit()
 
