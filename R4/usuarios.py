@@ -28,12 +28,21 @@ class ConfigUsuarios:
         data_criacao = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         with self._connect() as conexao:
-            cursor = conexao.cursor()
-            cursor.execute('''
-                INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            ''', (usuario, senha_hash, data_criacao, nome_completo, email, is_admin))
-            conexao.commit()
+            with conexao.cursor() as cursor:
+                cursor.execute('''
+                    INSERT INTO usuarios (usuario, senha, data_criacao, nome_completo, email, is_admin)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (usuario, senha_hash, data_criacao, nome_completo, email, is_admin))
+                conexao.commit()
+                # Obter o ID do novo usuário
+                usuario_id = cursor.lastrowid
+
+                # Inserir as preferências padrão para o novo usuário
+                cursor.execute('''
+                    INSERT INTO preferenciais_usuarios (usuario_id, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado, modo_tela)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (usuario_id, "Arial", 18, 0, 0, 0))
+                conexao.commit()
 
     def remover_usuario(self, usuario_id):
         if not self.usuario_logado['is_admin']:

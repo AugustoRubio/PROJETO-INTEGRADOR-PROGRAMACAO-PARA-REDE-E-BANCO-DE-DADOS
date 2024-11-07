@@ -1268,6 +1268,9 @@ class JanelaConfigUsuarios(QWidget):
         self.checkbox_is_admin = QCheckBox('Administrador', self.janela_adicionar)
         layout.addWidget(self.checkbox_is_admin, alignment=Qt.AlignCenter)
 
+        self.checkbox_adicionar_varios = QCheckBox('Adicionar vários', self.janela_adicionar)
+        layout.addWidget(self.checkbox_adicionar_varios, alignment=Qt.AlignCenter)
+
         botao_salvar = QPushButton('Salvar', self.janela_adicionar)
         botao_salvar.clicked.connect(self.salvar_novo_usuario)
         layout.addWidget(botao_salvar, alignment=Qt.AlignCenter)
@@ -1292,37 +1295,18 @@ class JanelaConfigUsuarios(QWidget):
 
         try:
             self.config_usuarios.adicionar_usuario(usuario, nome_completo, email, senha, is_admin)
-
-            conexao = mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            )
-            cursor = conexao.cursor()
-            cursor.execute("SELECT id FROM usuarios WHERE usuario = %s", (usuario,))
-            usuario_id = cursor.fetchone()[0]
-            cursor.execute('''
-                INSERT INTO preferenciais_usuarios (
-                    usuario_id,
-                    fonte_perso,
-                    tamanho_fonte_perso,
-                    fonte_alterada,
-                    tamanho_fonte_alterado,
-                    modo_tela
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-            ''', (usuario_id, "Arial", 18, 0, 0, 0))
-            conexao.commit()
-
             QMessageBox.information(self, 'Sucesso', 'Usuário adicionado com sucesso.')
-            self.janela_adicionar.close()
+            if self.checkbox_adicionar_varios.isChecked():
+                self.input_usuario.clear()
+                self.input_nome_completo.clear()
+                self.input_email.clear()
+                self.input_senha.clear()
+                self.checkbox_is_admin.setChecked(False)
+                self.input_usuario.setFocus()
+            else:
+                self.janela_adicionar.close()
         except Exception as e:
             self.mostrar_erro(f"Erro ao adicionar usuário: {e}")
-        finally:
-            if 'conexao' in locals() and conexao.is_connected():
-                cursor.close()
-                conexao.close()
 
     def remover_usuario(self):
         if not self.usuario_logado['is_admin']:
