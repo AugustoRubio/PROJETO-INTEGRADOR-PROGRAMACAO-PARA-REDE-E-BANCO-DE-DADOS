@@ -404,12 +404,21 @@ class JanelaPrincipal(QWidget):
                 port=port
             ) as conexao:
                 cursor = conexao.cursor(dictionary=True)
+                # Carregar preferências do usuário
                 cursor.execute('SELECT modo_tela, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
                 preferencia = cursor.fetchone()
-                if preferencia:
+                # Carregar configurações globais
+                cursor.execute('SELECT icone_modo_escuro, icone_modo_claro FROM config_programa WHERE id = 1')
+                configuracao = cursor.fetchone()
+                if preferencia and configuracao:
                     self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
                     self.fonte_padrao = preferencia['fonte_perso']
                     self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso']
+                    # URLs dos ícones
+                    self.icone_modo_escuro_url = configuracao['icone_modo_escuro']
+                    self.icone_modo_claro_url = configuracao['icone_modo_claro']
+                else:
+                    self.mostrar_erro("Erro ao carregar preferências ou configuração.")
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
 
@@ -420,11 +429,11 @@ class JanelaPrincipal(QWidget):
 
         layout = QVBoxLayout()
 
-        # Adicionar informações do usuário logado no canto superior esquerdo da janela
+        # Informações do usuário logado
         self.label_usuario_logado = QLabel(f"Usuário: {self.usuario_logado['usuario']} ({'Admin' if self.usuario_logado['is_admin'] else 'Comum'})", self)
         self.label_usuario_logado.setAlignment(Qt.AlignLeft)
 
-        # Adicionar switch de modo claro/escuro no canto superior direito
+        # Switch de modo claro/escuro
         self.switch_modo = QPushButton(self)
         self.switch_modo.setMaximumWidth(150)
         self.switch_modo.setCheckable(True)
@@ -488,7 +497,7 @@ class JanelaPrincipal(QWidget):
     def executar_scanner_rede(self):
         self.janela_scanner_rede = JanelaScannerRede(self.usuario_logado, self.modo)
         self.janela_scanner_rede.show()
-        self.hide()  # Use hide() instead of close() to prevent triggering closeEvent
+        self.hide()
 
     def abrir_janela_config_usuarios(self):
         self.janela_config_usuarios = JanelaConfigUsuarios(self.usuario_logado, self.modo)
@@ -527,8 +536,24 @@ class JanelaPrincipal(QWidget):
             self.mostrar_erro(f"Erro ao salvar preferência de modo: {e}")
 
     def atualizar_switch(self):
+        # Carregar ícone do URL
+        try:
+            if self.modo.modo_atual == 'escuro':
+                icon_url = self.icone_modo_escuro_url
+            else:
+                icon_url = self.icone_modo_claro_url
+
+            response = requests.get(icon_url)
+            response.raise_for_status()
+            image_data = response.content
+            pixmap = QPixmap()
+            pixmap.loadFromData(image_data)
+            icon = QIcon(pixmap)
+            self.switch_modo.setIcon(icon)
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao carregar ícone do modo: {e}")
+
         estilo = self.modo.atualizar_switch()
-        self.switch_modo.setIcon(QIcon(estilo["icone"]))
         self.switch_modo.setStyleSheet(f"""
         QPushButton {{
             background-color: {estilo["botao"]["background-color"]};
@@ -567,7 +592,7 @@ class JanelaPrincipal(QWidget):
             color: {estilo["label"]["color"]};
         }}
         """)
-    
+
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
