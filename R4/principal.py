@@ -55,6 +55,7 @@ from scanner_rede import PingIP, RedeAtual
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QHeaderView
 from modos import ModosPrincipais
+from config_programa import ConfiguracaoProgramaDB
 
 class ScannerRede:
     def __init__(self, portas_selecionadas, escaneamento_rapido):
@@ -1839,52 +1840,29 @@ class JanelaConfigPrograma(QWidget):
     def salvar_configuracoes(self):
         fonte_usuario = self.combo_fonte_usuario.currentText()
         tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
+        logo_principal = self.input_logo_principal.text() if self.usuario_logado['is_admin'] else None
+        logo_rodape = self.input_logo_rodape.text() if self.usuario_logado['is_admin'] else None
+        fonte_padrao = self.combo_fonte_padrao.currentText() if self.usuario_logado['is_admin'] else None
+        tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText() if self.usuario_logado['is_admin'] else None
+        modo_padrao = self.combo_modo_padrao.currentIndex() if self.usuario_logado['is_admin'] else None
+        resetar_fonte = self.checkbox_resetar_fonte.isChecked()
 
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                if self.usuario_logado['is_admin']:
-                    logo_principal = self.input_logo_principal.text()
-                    logo_rodape = self.input_logo_rodape.text()
-                    fonte_padrao = self.combo_fonte_padrao.currentText()
-                    tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText()
-                    modo_padrao = self.combo_modo_padrao.currentIndex()
-
-                    cursor.execute('''
-                        UPDATE config_programa
-                        SET logo_principal = %s, logo_rodape = %s, fonte_padrao = %s, tamanho_fonte_padrao = %s, modo_global = %s
-                        WHERE id = 1
-                    ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
-
-                if self.checkbox_resetar_fonte.isChecked():
-                    cursor.execute('SELECT fonte_padrao, tamanho_fonte_padrao FROM config_programa WHERE id = 1')
-                    configuracao = cursor.fetchone()
-                    if configuracao:
-                        fonte_padrao, tamanho_fonte_padrao = configuracao
-                        self.combo_fonte_usuario.setCurrentText(fonte_padrao)
-                        self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_padrao))
-                        cursor.execute('''
-                            UPDATE preferenciais_usuarios
-                            SET fonte_perso = %s, tamanho_fonte_perso = %s, fonte_alterada = %s, tamanho_fonte_alterado = %s
-                            WHERE usuario_id = %s
-                        ''', (fonte_padrao, tamanho_fonte_padrao, 0, 0, self.usuario_logado['id']))
-                else:
-                    cursor.execute('''
-                        UPDATE preferenciais_usuarios
-                        SET fonte_perso = %s, tamanho_fonte_perso = %s, fonte_alterada = %s, tamanho_fonte_alterado = %s
-                        WHERE usuario_id = %s
-                    ''', (fonte_usuario, tamanho_fonte_usuario, 1, 1, self.usuario_logado['id']))
-
-                conexao.commit()
-                QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
-                self.voltar_janela_anterior()
-        except mysql.connector.Error as e:
+            config_programa = ConfiguracaoProgramaDB(os.path.join(script_dir, 'config_programa.db'), app)
+            config_programa.salvar_configuracoes(
+                usuario_logado=self.usuario_logado,
+                fonte_usuario=fonte_usuario,
+                tamanho_fonte_usuario=tamanho_fonte_usuario,
+                logo_principal=logo_principal,
+                logo_rodape=logo_rodape,
+                fonte_padrao=fonte_padrao,
+                tamanho_fonte_padrao=tamanho_fonte_padrao,
+                modo_padrao=modo_padrao,
+                resetar_fonte=resetar_fonte
+            )
+            QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
+            self.voltar_janela_anterior()
+        except Exception as e:
             QMessageBox.critical(self, 'Erro', f"Erro ao salvar configurações: {e}")
 
     def voltar_janela_anterior(self):

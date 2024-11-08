@@ -81,6 +81,53 @@ class ConfiguracaoProgramaDB:
         if file_name:
             return file_name
         return None
+    
+    def salvar_configuracoes(self, usuario_logado, fonte_usuario, tamanho_fonte_usuario, logo_principal=None, logo_rodape=None, fonte_padrao=None, tamanho_fonte_padrao=None, modo_padrao=None, resetar_fonte=False):
+        try:
+            with sqlite3.connect(self.caminho_banco_dados) as conn:
+                cursor = conn.cursor()
+                if usuario_logado.get('is_admin'):
+                    campos = []
+                    valores = []
+                    if logo_principal:
+                        caminho_logo_principal = self.validar_e_salvar_logo(logo_principal, 'logo_principal')
+                        campos.append('logo_principal = ?')
+                        valores.append(caminho_logo_principal)
+                    if logo_rodape:
+                        caminho_logo_rodape = self.validar_e_salvar_logo(logo_rodape, 'logo_rodape')
+                        campos.append('logo_rodape = ?')
+                        valores.append(caminho_logo_rodape)
+                    if fonte_padrao:
+                        campos.append('fonte_padrao = ?')
+                        valores.append(fonte_padrao)
+                    if tamanho_fonte_padrao:
+                        campos.append('tamanho_fonte_padrao = ?')
+                        valores.append(tamanho_fonte_padrao)
+                    if modo_padrao is not None:
+                        campos.append('modo_global = ?')
+                        valores.append(modo_padrao)
+                    if campos:
+                        query = f"UPDATE config_programa SET {', '.join(campos)} WHERE id = 1"
+                        cursor.execute(query, valores)
+                if resetar_fonte:
+                    cursor.execute('SELECT fonte_padrao, tamanho_fonte_padrao FROM config_programa WHERE id = 1')
+                    config = cursor.fetchone()
+                    if config:
+                        fonte_padrao, tamanho_fonte_padrao = config
+                        cursor.execute('''
+                            UPDATE preferenciais_usuarios
+                            SET fonte_perso = ?, tamanho_fonte_perso = ?, fonte_alterada = 0, tamanho_fonte_alterado = 0
+                            WHERE usuario_id = ?
+                        ''', (fonte_padrao, tamanho_fonte_padrao, usuario_logado['id']))
+                else:
+                    cursor.execute('''
+                        UPDATE preferenciais_usuarios
+                        SET fonte_perso = ?, tamanho_fonte_perso = ?, fonte_alterada = 1, tamanho_fonte_alterado = 1
+                        WHERE usuario_id = ?
+                    ''', (fonte_usuario, tamanho_fonte_usuario, usuario_logado['id']))
+                conn.commit()
+        except sqlite3.Error as e:
+            pass  # Handle error accordingly
 
 if __name__ == "__main__":
     import sys
