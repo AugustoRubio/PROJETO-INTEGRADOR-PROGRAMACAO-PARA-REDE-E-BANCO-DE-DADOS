@@ -8,9 +8,9 @@ class DependencyChecker:
             "PyQt5": "PyQt5",
             "requests": "requests",
             "nmap": "python-nmap",
-            "mysql.connector": "mysql-connector-python"
+            "mysql": "mysql-connector-python"
         }
-
+    
         missing_dependencies = []
         for module, package in dependencies.items():
             if not importlib.util.find_spec(module):
