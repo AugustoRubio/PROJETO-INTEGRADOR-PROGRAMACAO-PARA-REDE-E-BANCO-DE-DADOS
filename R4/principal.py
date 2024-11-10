@@ -1624,7 +1624,15 @@ class JanelaConfigPrograma(QWidget):
         super().__init__()
         self.usuario_logado = usuario_logado
         self.modo = modo
+        self.carregar_preferencias_usuario()
         self.inicializarUI()
+        self.aplicar_modo()
+
+    def carregar_preferencias_usuario(self):
+        modos = ModosPrincipais()
+        modos.carregar_preferencias_usuario()
+        self.fonte_padrao = modos.fonte_padrao
+        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Configurações do Programa')
@@ -1705,6 +1713,37 @@ class JanelaConfigPrograma(QWidget):
         self.carregar_tamanhos_fonte_usuario()
         self.carregar_configuracoes()
 
+    def aplicar_modo(self):
+        estilo = self.modo.atualizar_switch()
+        self.setStyleSheet(f"""
+        QWidget {{
+            background-color: {estilo["widget"]["background-color"]};
+            color: {estilo["widget"]["color"]};
+            font-family: {self.fonte_padrao};
+            font-size: {self.tamanho_fonte_padrao}px;
+        }}
+        QPushButton {{
+            background-color: {estilo["botao"]["background-color"]};
+            color: {estilo["botao"]["color"]};
+        }}
+        QLineEdit {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QLabel {{
+            color: {estilo["label"]["color"]};
+        }}
+        QComboBox {{
+            background-color: {estilo["line_edit"]["background-color"]};
+            color: {estilo["line_edit"]["color"]};
+        }}
+        QCheckBox {{
+            color: {estilo["label"]["color"]};
+        }}
+        """)
+        if self.fonte_padrao and self.tamanho_fonte_padrao:
+            self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
+
     def center(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
@@ -1741,6 +1780,25 @@ class JanelaConfigPrograma(QWidget):
             self.combo_tamanho_fonte_padrao.view().setMouseTracking(True)
             self.combo_tamanho_fonte_padrao.view().entered.connect(self.expandir_lista_tamanhos)
             self.combo_tamanho_fonte_padrao.lineEdit().installEventFilter(self)
+
+    def carregar_fontes_usuario(self):
+        fontes = QFontDatabase().families()
+        for fonte in fontes:
+            self.combo_fonte_usuario.addItem(fonte)
+            index = self.combo_fonte_usuario.findText(fonte)
+            self.combo_fonte_usuario.setItemData(index, QFont(fonte), Qt.FontRole)
+        self.combo_fonte_usuario.currentIndexChanged.connect(self.atualizar_preview_fonte_usuario)
+        self.combo_fonte_usuario.view().setMouseTracking(True)
+        self.combo_fonte_usuario.view().entered.connect(self.expandir_lista_fontes_usuario)
+        self.combo_fonte_usuario.lineEdit().installEventFilter(self)
+
+    def carregar_tamanhos_fonte_usuario(self):
+        for tamanho in range(1, 101):
+            self.combo_tamanho_fonte_usuario.addItem(str(tamanho))
+        self.combo_tamanho_fonte_usuario.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_usuario)
+        self.combo_tamanho_fonte_usuario.view().setMouseTracking(True)
+        self.combo_tamanho_fonte_usuario.view().entered.connect(self.expandir_lista_tamanhos_usuario)
+        self.combo_tamanho_fonte_usuario.lineEdit().installEventFilter(self)
 
     def carregar_configuracoes(self):
         try:
@@ -1791,25 +1849,6 @@ class JanelaConfigPrograma(QWidget):
     def expandir_lista_tamanhos(self, _):
         self.combo_tamanho_fonte_padrao.showPopup()
 
-    def carregar_fontes_usuario(self):
-        fontes = QFontDatabase().families()
-        for fonte in fontes:
-            self.combo_fonte_usuario.addItem(fonte)
-            index = self.combo_fonte_usuario.findText(fonte)
-            self.combo_fonte_usuario.setItemData(index, QFont(fonte), Qt.FontRole)
-        self.combo_fonte_usuario.currentIndexChanged.connect(self.atualizar_preview_fonte_usuario)
-        self.combo_fonte_usuario.view().setMouseTracking(True)
-        self.combo_fonte_usuario.view().entered.connect(self.expandir_lista_fontes_usuario)
-        self.combo_fonte_usuario.lineEdit().installEventFilter(self)
-
-    def carregar_tamanhos_fonte_usuario(self):
-        for tamanho in range(1, 101):
-            self.combo_tamanho_fonte_usuario.addItem(str(tamanho))
-        self.combo_tamanho_fonte_usuario.currentIndexChanged.connect(self.atualizar_preview_tamanho_fonte_usuario)
-        self.combo_tamanho_fonte_usuario.view().setMouseTracking(True)
-        self.combo_tamanho_fonte_usuario.view().entered.connect(self.expandir_lista_tamanhos_usuario)
-        self.combo_tamanho_fonte_usuario.lineEdit().installEventFilter(self)
-
     def atualizar_preview_fonte_usuario(self):
         fonte = self.combo_fonte_usuario.currentText()
         self.combo_fonte_usuario.lineEdit().setFont(QFont(fonte))
@@ -1848,18 +1887,28 @@ class JanelaConfigPrograma(QWidget):
         resetar_fonte = self.checkbox_resetar_fonte.isChecked()
 
         try:
-            config_programa = ConfiguracaoProgramaDB(os.path.join(script_dir, 'config_programa.db'), app)
-            config_programa.salvar_configuracoes(
-                usuario_logado=self.usuario_logado,
-                fonte_usuario=fonte_usuario,
-                tamanho_fonte_usuario=tamanho_fonte_usuario,
-                logo_principal=logo_principal,
-                logo_rodape=logo_rodape,
-                fonte_padrao=fonte_padrao,
-                tamanho_fonte_padrao=tamanho_fonte_padrao,
-                modo_padrao=modo_padrao,
-                resetar_fonte=resetar_fonte
-            )
+            with mysql.connector.connect(
+                host=host,
+                user=user,
+                password=password,
+                database=database,
+                port=port
+            ) as conexao:
+                cursor = conexao.cursor()
+                if self.usuario_logado['is_admin']:
+                    cursor.execute('''
+                        UPDATE config_programa SET logo_principal=%s, logo_rodape=%s, fonte_padrao=%s, tamanho_fonte_padrao=%s, modo_global=%s WHERE id=1
+                    ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
+                    conexao.commit()
+                if resetar_fonte:
+                    cursor.execute('''
+                        UPDATE preferenciais_usuarios SET fonte_perso=NULL, tamanho_fonte_perso=NULL, fonte_alterada=0, tamanho_fonte_alterado=0 WHERE usuario_id=%s
+                    ''', (self.usuario_logado['id'],))
+                else:
+                    cursor.execute('''
+                        UPDATE preferenciais_usuarios SET fonte_perso=%s, tamanho_fonte_perso=%s, fonte_alterada=1, tamanho_fonte_alterado=1 WHERE usuario_id=%s
+                    ''', (fonte_usuario, tamanho_fonte_usuario, self.usuario_logado['id']))
+                conexao.commit()
             QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
             self.voltar_janela_anterior()
         except Exception as e:
