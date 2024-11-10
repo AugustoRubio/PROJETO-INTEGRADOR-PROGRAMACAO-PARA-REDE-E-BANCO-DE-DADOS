@@ -431,7 +431,7 @@ class JanelaPrincipal(QWidget):
         layout = QVBoxLayout()
 
         # Informações do usuário logado
-        self.label_usuario_logado = QLabel(f"Usuário: {self.usuario_logado['usuario']} ({'Admin' if self.usuario_logado['is_admin'] else 'Comum'})", self)
+        self.label_usuario_logado = QLabel(f"Usuário: {self.usuario_logado['usuario']} ({'Admin' if self.usuario_logado['is_admin'] else 'Técnico'})", self)
         self.label_usuario_logado.setAlignment(Qt.AlignLeft)
 
         # Switch de modo claro/escuro
