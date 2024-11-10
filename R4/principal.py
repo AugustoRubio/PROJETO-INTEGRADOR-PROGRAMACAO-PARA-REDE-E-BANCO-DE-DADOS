@@ -1844,37 +1844,31 @@ class JanelaConfigPrograma(QWidget):
         self.combo_tamanho_fonte_usuario.lineEdit().installEventFilter(self)
 
     def carregar_configuracoes(self):
+        config_db = ConfiguracaoProgramaDB(self)
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                if self.usuario_logado['is_admin']:
-                    cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
-                    configuracao = cursor.fetchone()
-                    if configuracao:
-                        self.input_logo_principal.setText(configuracao[0])
-                        self.input_logo_rodape.setText(configuracao[1])
-                        self.combo_fonte_padrao.setCurrentText(configuracao[2])
-                        self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[3]))
-                        self.combo_modo_padrao.setCurrentIndex(configuracao[4])
+            if self.usuario_logado['is_admin']:
+                configuracao = config_db.obter_configuracao(1)
+                if configuracao:
+                    self.input_logo_principal.setText(configuracao[1])
+                    self.input_logo_rodape.setText(configuracao[2])
+                    self.combo_fonte_padrao.setCurrentText(configuracao[3])
+                    self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[4]))
+                    self.combo_modo_padrao.setCurrentIndex(configuracao[5])
 
-                cursor.execute('SELECT fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
-                preferencia_usuario = cursor.fetchone()
-                if preferencia_usuario:
-                    fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado = preferencia_usuario
-                    if fonte_alterada:
-                        self.combo_fonte_usuario.setCurrentText(fonte_perso)
-                    else:
-                        self.combo_fonte_usuario.setCurrentText(configuracao[2] if self.usuario_logado['is_admin'] and configuracao else "")
-                    if tamanho_fonte_alterado:
-                        self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
-                    else:
-                        self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[3] if self.usuario_logado['is_admin'] and configuracao else ""))
+            preferencia_usuario = config_db.carregar_preferencias_usuario(self.usuario_logado['id'])
+            if preferencia_usuario:
+                fonte_perso = preferencia_usuario['fonte_perso']
+                tamanho_fonte_perso = preferencia_usuario['tamanho_fonte_perso']
+                fonte_alterada = preferencia_usuario['fonte_alterada']
+                tamanho_fonte_alterado = preferencia_usuario['tamanho_fonte_alterado']
+                if fonte_alterada:
+                    self.combo_fonte_usuario.setCurrentText(fonte_perso)
+                else:
+                    self.combo_fonte_usuario.setCurrentText(configuracao[3] if self.usuario_logado['is_admin'] and configuracao else "")
+                if tamanho_fonte_alterado:
+                    self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
+                else:
+                    self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[4] if self.usuario_logado['is_admin'] and configuracao else ""))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
@@ -1929,29 +1923,20 @@ class JanelaConfigPrograma(QWidget):
         modo_padrao = self.combo_modo_padrao.currentIndex() if self.usuario_logado['is_admin'] else None
         resetar_fonte = self.checkbox_resetar_fonte.isChecked()
 
+        config_db = ConfiguracaoProgramaDB(self)
+
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                if self.usuario_logado['is_admin']:
-                    cursor.execute('''
-                        UPDATE config_programa SET logo_principal=%s, logo_rodape=%s, fonte_padrao=%s, tamanho_fonte_padrao=%s, modo_global=%s WHERE id=1
-                    ''', (logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_padrao))
-                    conexao.commit()
-                if resetar_fonte:
-                    cursor.execute('''
-                        UPDATE preferenciais_usuarios SET fonte_perso=NULL, tamanho_fonte_perso=NULL, fonte_alterada=0, tamanho_fonte_alterado=0 WHERE usuario_id=%s
-                    ''', (self.usuario_logado['id'],))
-                else:
-                    cursor.execute('''
-                        UPDATE preferenciais_usuarios SET fonte_perso=%s, tamanho_fonte_perso=%s, fonte_alterada=1, tamanho_fonte_alterado=1 WHERE usuario_id=%s
-                    ''', (fonte_usuario, tamanho_fonte_usuario, self.usuario_logado['id']))
-                conexao.commit()
+            config_db.salvar_configuracoes(
+                self.usuario_logado,
+                fonte_usuario,
+                tamanho_fonte_usuario,
+                logo_principal,
+                logo_rodape,
+                fonte_padrao,
+                tamanho_fonte_padrao,
+                modo_padrao,
+                resetar_fonte
+            )
             QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
             self.voltar_janela_anterior()
         except Exception as e:
