@@ -27,7 +27,7 @@ DependencyChecker.check_and_install_dependencies()
 import sys
 import mysql.connector
 import hashlib
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea, QInputDialog
 from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray
 from PyQt5.QtGui import QFont
@@ -1649,6 +1649,8 @@ class JanelaConfigPrograma(QWidget):
             layout.addWidget(QLabel('Logo Principal:'))
             layout.addWidget(self.input_logo_principal)
 
+            self.input_logo_principal.setReadOnly(True)
+            self.input_logo_principal.setStyleSheet("background-color: lightgray;")
             self.botao_logo_principal = QPushButton('Selecionar Logo Principal', self)
             self.botao_logo_principal.clicked.connect(self.selecionar_logo_principal)
             layout.addWidget(self.botao_logo_principal)
@@ -1657,6 +1659,8 @@ class JanelaConfigPrograma(QWidget):
             layout.addWidget(QLabel('Logo Rodapé:'))
             layout.addWidget(self.input_logo_rodape)
 
+            self.input_logo_rodape.setReadOnly(True)
+            self.input_logo_rodape.setStyleSheet("background-color: lightgray;")
             self.botao_logo_rodape = QPushButton('Selecionar Logo Rodapé', self)
             self.botao_logo_rodape.clicked.connect(self.selecionar_logo_rodape)
             layout.addWidget(self.botao_logo_rodape)
@@ -1751,14 +1755,53 @@ class JanelaConfigPrograma(QWidget):
         self.move(qr.topLeft())
 
     def selecionar_logo_principal(self):
-        caminho_logo, _ = QFileDialog.getOpenFileName(self, 'Selecionar Logo Principal', '', 'Images (*.png *.jpg *.bmp)')
-        if caminho_logo:
-            self.input_logo_principal.setText(caminho_logo)
+        url, ok = QInputDialog.getText(self, 'Trocar imagem', 'Insira a URL da imagem:')
+        if ok and url:
+            self.mostrar_preview_imagem(url, 'logo_principal')
 
     def selecionar_logo_rodape(self):
-        caminho_logo, _ = QFileDialog.getOpenFileName(self, 'Selecionar Logo Rodapé', '', 'Images (*.png *.jpg *.bmp)')
-        if caminho_logo:
-            self.input_logo_rodape.setText(caminho_logo)
+        url, ok = QInputDialog.getText(self, 'Selecionar Logo Rodapé', 'Insira a URL da imagem:')
+        if ok and url:
+            self.mostrar_preview_imagem(url, 'logo_rodape')
+
+    def mostrar_preview_imagem(self, url, tipo_logo):
+        self.janela_preview = QWidget()
+        self.janela_preview.setWindowTitle('Preview da Imagem')
+        self.janela_preview.setGeometry(100, 100, 400, 300)
+        layout = QVBoxLayout()
+
+        label_imagem = QLabel(self.janela_preview)
+        label_imagem.setAlignment(Qt.AlignCenter)
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            image_data = response.content
+            pixmap = QPixmap()
+            pixmap.loadFromData(image_data)
+            label_imagem.setPixmap(pixmap.scaled(300, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        except Exception as e:
+            QMessageBox.critical(self, 'Erro', f"Erro ao carregar imagem: {e}")
+            return
+
+        layout.addWidget(label_imagem)
+
+        botao_aprovar = QPushButton('Aprovar', self.janela_preview)
+        botao_aprovar.clicked.connect(lambda: self.aprovar_imagem(url, tipo_logo))
+        layout.addWidget(botao_aprovar, alignment=Qt.AlignCenter)
+
+        botao_reprovar = QPushButton('Reprovar', self.janela_preview)
+        botao_reprovar.clicked.connect(self.janela_preview.close)
+        layout.addWidget(botao_reprovar, alignment=Qt.AlignCenter)
+
+        self.janela_preview.setLayout(layout)
+        self.janela_preview.show()
+
+    def aprovar_imagem(self, url, tipo_logo):
+        if tipo_logo == 'logo_principal':
+            self.input_logo_principal.setText(url)
+        elif tipo_logo == 'logo_rodape':
+            self.input_logo_rodape.setText(url)
+        self.janela_preview.close()
 
     def carregar_fontes(self):
         if self.usuario_logado['is_admin']:
