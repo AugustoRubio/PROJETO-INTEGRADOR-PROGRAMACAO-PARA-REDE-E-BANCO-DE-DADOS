@@ -151,7 +151,25 @@ class ConfiguracaoProgramaDB:
                     conn.commit()
         except mysql.connector.Error:
             pass
+        
+    def carregar_configuracoes(self):
+        try:
+            with mysql.connector.connect(**self.connection_params) as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
+                configuracao = cursor.fetchone()
+        except mysql.connector.Error as e:
+            self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
+            return
 
+        if configuracao:
+            self.logo_principal, self.logo_rodape, self.fonte_padrao, self.tamanho_fonte_padrao, self.modo_global = configuracao
+            self.modo.modo_atual = 'escuro' if self.modo_global == 1 else 'claro'
+        else:
+            self.mostrar_erro("Configuração não encontrada no banco de dados.")
+            return
+        
+    
     if __name__ == "__main__":
         import sys
         app = QApplication(sys.argv)
