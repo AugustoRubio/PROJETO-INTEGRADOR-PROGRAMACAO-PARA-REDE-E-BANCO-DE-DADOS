@@ -26,7 +26,7 @@ CheckDependencias.check_and_install_dependencies()
 
 import sys
 import mysql.connector
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea, QInputDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea, QInputDialog, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QPixmap, QMovie, QIcon
 from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray
 from PyQt5.QtGui import QFont, QFontDatabase
@@ -51,7 +51,7 @@ from criar_db import GerenciadorBancoDados
 from config_programa import CarregarConfiguracoes, CarregarPreferenciasUsuario, SalvarConfiguracoes
 #Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
-from scanner_rede import PingIP, RedeAtual
+from scanner_rede import PingIP, RedeAtual, CarregarResultadosCalendario
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QHeaderView
 from modos import ModosPrincipais
@@ -835,9 +835,23 @@ class JanelaOpcoesScanner(QWidget):
         scanner.portas_selecionadas = portas_selecionadas
         resultados = scanner.escanear()
 
-        self.janela_resultados = JanelaResultadosScanner(self.usuario_logado, self.modo, resultados)
-        self.janela_resultados.show()
-        self.close()
+        try:
+            scanner = ScannerRedeExterno(host, user, password, database, port)
+            scanner.salvar_resultados(resultados)
+            
+            data_atual = datetime.now().strftime('%d/%m/%Y')
+            carregar_resultados_calendario = CarregarResultadosCalendario(host, user, password, database, port, data_atual)
+            resultados_salvos = carregar_resultados_calendario.carregar_resultados()
+            
+            if isinstance(resultados_salvos, str):
+                self.mostrar_erro(resultados_salvos)
+                return
+            
+            self.janela_resultados = JanelaResultadosScanner(self.usuario_logado, self.modo, resultados_salvos)
+            self.janela_resultados.show()
+            self.close()
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao salvar resultados do scanner: {e}")
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
@@ -869,8 +883,8 @@ class JanelaResultadosScanner(QWidget):
         layout = QVBoxLayout()
 
         self.tabela_resultados = QTableWidget(self)
-        self.tabela_resultados.setColumnCount(4)
-        self.tabela_resultados.setHorizontalHeaderLabels(['Hostname', 'MAC Address', 'IP', 'Portas'])
+        self.tabela_resultados.setColumnCount(6)
+        self.tabela_resultados.setHorizontalHeaderLabels(['Usuário ID', 'Data', 'Hostname', 'MAC Address', 'IP', 'Portas'])
         self.tabela_resultados.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         layout.addWidget(self.tabela_resultados)
 
@@ -889,14 +903,35 @@ class JanelaResultadosScanner(QWidget):
         self.move(qr.topLeft())
 
     def carregar_resultados(self):
-        self.tabela_resultados.setRowCount(0)
-        for resultado in self.resultados:
-            row_position = self.tabela_resultados.rowCount()
-            self.tabela_resultados.insertRow(row_position)
-            for column, data in enumerate(resultado):
-                self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
-        self.tabela_resultados.resizeColumnsToContents()
+        try:
+            self.tabela_resultados.setRowCount(0)
+            for resultado in self.resultados:
+                row_position = self.tabela_resultados.rowCount()
+                self.tabela_resultados.insertRow(row_position)
+                for column, data in enumerate(resultado.values() if isinstance(resultado, dict) else resultado):
+                    self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
+            self.tabela_resultados.resizeColumnsToContents()
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao carregar resultados: {e}")
+            try:
+                data_atual = datetime.now().strftime('%d/%m/%Y')
+                carregar_resultados_calendario = CarregarResultadosCalendario(host, user, password, database, port, data_atual)
+                resultados_salvos = carregar_resultados_calendario.carregar_resultados()
 
+                if isinstance(resultados_salvos, str):
+                    self.mostrar_erro(resultados_salvos)
+                    return
+
+                self.tabela_resultados.setRowCount(0)
+                for resultado in resultados_salvos:
+                    row_position = self.tabela_resultados.rowCount()
+                    self.tabela_resultados.insertRow(row_position)
+                    for column, data in enumerate(resultado.values() if isinstance(resultado, dict) else resultado):
+                        self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
+                self.tabela_resultados.resizeColumnsToContents()
+            except Exception as e:
+                self.mostrar_erro(f"Erro ao carregar resultados: {e}")
+            
     def aplicar_modo(self):
         estilo = self.modo.atualizar_switch()
         self.setStyleSheet(f"""
@@ -1102,28 +1137,20 @@ class JanelaResultadosData(QWidget):
 
     def carregar_resultados(self):
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT data, hostname, mac_address, ip, portas FROM scanner WHERE DATE(data) = %s', (datetime.strptime(self.data_selecionada, '%d/%m/%Y').date(),))
-                resultados = cursor.fetchall()
+            carregar_resultados_calendario = CarregarResultadosCalendario(host, user, password, database, port, self.data_selecionada)
+            resultados = carregar_resultados_calendario.carregar_resultados()
 
-                if not resultados:
-                    self.mostrar_erro("Nenhuma informação encontrada para a data selecionada.")
-                    return
+            if isinstance(resultados, str):
+                self.mostrar_erro(resultados)
+                return
 
-                self.tabela_resultados.setRowCount(0)
-                for resultado in resultados:
-                    row_position = self.tabela_resultados.rowCount()
-                    self.tabela_resultados.insertRow(row_position)
-                    for column, data in enumerate(resultado):
-                        self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
-                self.tabela_resultados.resizeColumnsToContents()
+            self.tabela_resultados.setRowCount(0)
+            for resultado in resultados:
+                row_position = self.tabela_resultados.rowCount()
+                self.tabela_resultados.insertRow(row_position)
+                for column, data in enumerate(resultado.values()):
+                    self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
+            self.tabela_resultados.resizeColumnsToContents()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao buscar informações: {e}")
 

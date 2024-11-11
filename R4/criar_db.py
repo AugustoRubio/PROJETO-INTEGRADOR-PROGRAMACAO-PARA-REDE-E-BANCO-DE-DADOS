@@ -38,11 +38,13 @@ class GerenciadorBancoDados:
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS scanner (
                         id INT AUTO_INCREMENT PRIMARY KEY,
+                        usuario_id INT NOT NULL,
                         data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         hostname VARCHAR(255),
                         mac_address VARCHAR(255),
                         ip VARCHAR(255),
-                        portas TEXT
+                        portas TEXT,
+                        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
                     )
                 ''')
 
