@@ -1715,7 +1715,7 @@ class JanelaConfigPrograma(QWidget):
         self.carregar_tamanhos_fonte()
         self.carregar_fontes_usuario()
         self.carregar_tamanhos_fonte_usuario()
-        self.carregar_configuracoes()
+        self.carregar_configuracoes_perso_usuario()
 
     def aplicar_modo(self):
         estilo = self.modo.atualizar_switch()
@@ -1843,7 +1843,7 @@ class JanelaConfigPrograma(QWidget):
         self.combo_tamanho_fonte_usuario.view().entered.connect(self.expandir_lista_tamanhos_usuario)
         self.combo_tamanho_fonte_usuario.lineEdit().installEventFilter(self)
 
-    def carregar_configuracoes(self):
+    def carregar_configuracoes_perso_usuario(self):
         config_db = ConfiguracaoProgramaDB(self)
         try:
             if self.usuario_logado['is_admin']:

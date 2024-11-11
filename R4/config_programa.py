@@ -154,7 +154,13 @@ class ConfiguracaoProgramaDB:
         
     def carregar_configuracoes(self):
         try:
-            with mysql.connector.connect(**self.connection_params) as conexao:
+            with mysql.connector.connect(
+                host=self.connection_params['host'],
+                user=self.connection_params['user'],
+                password=self.connection_params['password'],
+                database=self.connection_params['database'],
+                port=self.connection_params['port']
+            ) as conexao:
                 cursor = conexao.cursor()
                 cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
                 configuracao = cursor.fetchone()
