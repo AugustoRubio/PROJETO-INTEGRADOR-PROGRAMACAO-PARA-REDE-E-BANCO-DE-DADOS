@@ -1,7 +1,7 @@
 import sys
 import subprocess
 import importlib.util
-class DependencyChecker:
+class CheckDependencias:
     @staticmethod
     def check_and_install_dependencies():
         dependencies = {
@@ -22,7 +22,7 @@ class DependencyChecker:
         else:
             print("Todas as dependências estão instaladas.")
 
-DependencyChecker.check_and_install_dependencies()
+CheckDependencias.check_and_install_dependencies()
 
 import sys
 import mysql.connector
