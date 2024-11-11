@@ -26,11 +26,10 @@ CheckDependencias.check_and_install_dependencies()
 
 import sys
 import mysql.connector
-import hashlib
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea, QInputDialog
-from PyQt5.QtGui import QPixmap, QFont, QMovie, QIcon, QFontDatabase
+from PyQt5.QtGui import QPixmap, QMovie, QIcon
 from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QFontDatabase
 
 import os
 import configparser
@@ -46,16 +45,16 @@ from datetime import datetime
 #Importa as classes do arquivo usuarios.py, que cuida das funções de adicionar, editar, remover e listar usuários do banco de dados
 from usuarios import ConfigUsuarios
 #Importa as classes do arquivo modos.py, que cuida das funções de trocar o modo de cores do programa
-from modos import Modo  # Ensure this import is correct and the Modo class is defined in modos.py
+from modos import Modo
 #Importa as classes do arquivo criar_db.py, que cuida das funções de criar o banco de dados e verificar se o banco de dados já existe
 from criar_db import GerenciadorBancoDados
+from config_programa import CarregarConfiguracoes, CarregarPreferenciasUsuario, SalvarConfiguracoes
 #Importa as classes do arquivo dashboard.py, que cuida das funções de monitorar o hardware e extrair informações do hardware
 from dashboard import MonitorDeHardware, ExtratorDeInfoHardware
 from scanner_rede import PingIP, RedeAtual
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QHeaderView
 from modos import ModosPrincipais
-from config_programa import ConfiguracaoProgramaDB
 
 class ScannerRede:
     def __init__(self, portas_selecionadas, escaneamento_rapido):
@@ -104,26 +103,16 @@ class JanelaLogin(QWidget):
 
     def carregar_configuracoes(self):
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT logo_principal, logo_rodape, fonte_padrao, tamanho_fonte_padrao, modo_global FROM config_programa WHERE id = 1')
-                configuracao = cursor.fetchone()
-        except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao buscar configuração do banco de dados: {e}")
-            return
-
-        if configuracao:
-            self.logo_principal, self.logo_rodape, self.fonte_padrao, self.tamanho_fonte_padrao, self.modo_global = configuracao
-            self.modo.modo_atual = 'escuro' if self.modo_global == 1 else 'claro'
-        else:
-            self.mostrar_erro("Configuração não encontrada no banco de dados.")
-            return
+            carregar_config = CarregarConfiguracoes()
+            carregar_config.carregar_configuracoes()
+            self.logo_principal = carregar_config.logo_principal
+            self.logo_rodape = carregar_config.logo_rodape
+            self.fonte_padrao = carregar_config.fonte_padrao
+            self.tamanho_fonte_padrao = carregar_config.tamanho_fonte_padrao
+            self.modo_global = 1 if carregar_config.modo_atual == 'escuro' else 0
+            self.modo.modo_atual = carregar_config.modo_atual
+        except Exception as e:
+            self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
     def inicializarUI(self):
         self.setWindowTitle('Login')
@@ -208,36 +197,18 @@ class JanelaLogin(QWidget):
             QMessageBox.warning(self, 'Erro', 'Por favor, preencha todos os campos.')
             return
 
+        config_usuarios = ConfigUsuarios(None, host, user, password, database, port)
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, senha, ultimo_login FROM usuarios WHERE usuario = %s', (usuario,))
-                resultado = cursor.fetchone()
-        except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao verificar login: {e}")
-            return
-
-        if resultado:
-            usuario_id, senha_armazenada, ultimo_login = resultado
-            senha_hash = hashlib.sha256(senha.encode()).hexdigest()
-
-            if senha_hash == senha_armazenada:
-                if usuario_id == 1 and not ultimo_login:
-                    self.mostrar_tela_alterar_senha(usuario)
-                else:
-                    self.registrar_login(usuario)
-                    self.usuario_logado = self.obter_usuario_logado()
-                    self.abrir_janela_principal()
-            else:
-                QMessageBox.warning(self, 'Erro', 'Senha incorreta.')
-        else:
-            QMessageBox.warning(self, 'Erro', 'Usuário não encontrado.')
+            resultado = config_usuarios.verificar_login(usuario, senha)
+            if resultado == "alterar_senha":
+                self.mostrar_tela_alterar_senha(usuario)
+            elif resultado == "login_sucesso":
+                self.usuario_logado = self.obter_usuario_logado()
+                self.abrir_janela_principal()
+        except ValueError as e:
+            QMessageBox.warning(self, 'Erro', str(e))
+        except ConnectionError as e:
+            self.mostrar_erro(str(e))
 
     def mostrar_tela_alterar_senha(self, usuario):
         self.janela_alterar_senha = QWidget()
@@ -288,45 +259,22 @@ class JanelaLogin(QWidget):
             self.mostrar_erro("As senhas não coincidem.")
             return
 
+        config_usuarios = ConfigUsuarios(None, host, user, password, database, port)
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
-                senha_atual_hash = cursor.fetchone()[0]
-                nova_senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
-
-                if nova_senha_hash == senha_atual_hash:
-                    self.mostrar_erro("A nova senha não pode ser igual à senha atual.")
-                    return
-
-                cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', (nova_senha_hash, datetime.now(), usuario))
-                conexao.commit()
-                QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
-                self.janela_alterar_senha.close()
-                self.registrar_login(usuario)
-                self.abrir_janela_principal()
+            config_usuarios.salvar_nova_senha(usuario, nova_senha, confirmar_senha)
+            QMessageBox.information(self, 'Sucesso', 'Senha alterada com sucesso.')
+            self.janela_alterar_senha.close()
+            self.registrar_login(usuario)
+            self.abrir_janela_principal()
+        except ValueError as e:
+            self.mostrar_erro(str(e))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao alterar senha: {e}")
 
-    def registrar_login(self, usuario):
+    def registrar_login(self, usuario_id):
+        config_usuarios = ConfigUsuarios(None, host, user, password, database, port)
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                data_hora_atual = datetime.now()
-                cursor.execute('UPDATE usuarios SET ultimo_login = %s WHERE usuario = %s', (data_hora_atual, usuario))
-                conexao.commit()
+            config_usuarios.registrar_login(usuario_id)
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao registrar login: {e}")
 
@@ -340,22 +288,13 @@ class JanelaLogin(QWidget):
             self.mostrar_erro('Erro ao obter informações do usuário logado.')
 
     def obter_usuario_logado(self):
-        try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = %s', (self.input_usuario.text(),))
-                resultado = cursor.fetchone()
-                if resultado:
-                    return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
-        except mysql.connector.Error as e:
-            self.mostrar_erro(f"Erro ao obter usuário logado: {e}")
-        return None
+        config_usuarios = ConfigUsuarios(None, host, user, password, database, port)
+        usuario_logado = config_usuarios.obter_usuario_logado(self.input_usuario.text())
+        if usuario_logado:
+            return usuario_logado
+        else:
+            self.mostrar_erro("Erro ao obter informações do usuário logado.")
+            return None
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
@@ -397,32 +336,31 @@ class JanelaPrincipal(QWidget):
 
     def carregar_preferencias_usuario(self):
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor(dictionary=True)
-                # Carregar preferências do usuário
-                cursor.execute('SELECT modo_tela, fonte_perso, tamanho_fonte_perso, fonte_alterada, tamanho_fonte_alterado FROM preferenciais_usuarios WHERE usuario_id = %s', (self.usuario_logado['id'],))
-                preferencia = cursor.fetchone()
-                # Carregar configurações globais
-                cursor.execute('SELECT icone_modo_escuro, icone_modo_claro FROM config_programa WHERE id = 1')
-                configuracao = cursor.fetchone()
-                if preferencia and configuracao:
-                    self.modo.modo_atual = 'escuro' if preferencia['modo_tela'] == 1 else 'claro'
-                    self.fonte_padrao = preferencia['fonte_perso']
-                    self.tamanho_fonte_padrao = preferencia['tamanho_fonte_perso']
-                    # URLs dos ícones
-                    self.icone_modo_escuro_url = configuracao['icone_modo_escuro']
-                    self.icone_modo_claro_url = configuracao['icone_modo_claro']
+            carregar_preferencias = CarregarPreferenciasUsuario()
+            preferencias = carregar_preferencias.carregar_preferencias_usuario(self.usuario_logado['id'])
+            if preferencias:
+                self.modo.modo_atual = 'escuro' if preferencias['modo_tela'] == 'escuro' else 'claro'
+                self.icone_modo_escuro_url = preferencias['icone_modo_escuro']
+                self.icone_modo_claro_url = preferencias['icone_modo_claro']
+                
+                if preferencias['fonte_alterada']:
+                    self.fonte_padrao = preferencias['fonte_perso']
                 else:
-                    self.mostrar_erro("Erro ao carregar preferências ou configuração.")
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.fonte_padrao = carregar_config.fonte_padrao
+
+                if preferencias['tamanho_fonte_alterado']:
+                    self.tamanho_fonte_padrao = preferencias['tamanho_fonte_perso']
+                else:
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.tamanho_fonte_padrao = carregar_config.tamanho_fonte_padrao
+            else:
+                self.mostrar_erro("Erro ao carregar preferências do usuário.")
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar preferências do usuário: {e}")
-
+                    
     def inicializarUI(self):
         self.setWindowTitle('Janela Principal')
         self.setGeometry(0, 0, 300, 200)
@@ -522,18 +460,9 @@ class JanelaPrincipal(QWidget):
 
     def salvar_preferencia_modo(self):
         try:
-            with mysql.connector.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=database,
-                port=port
-            ) as conexao:
-                cursor = conexao.cursor()
-                modo_tela = 1 if self.modo.modo_atual == 'escuro' else 0
-                cursor.execute('UPDATE preferenciais_usuarios SET modo_tela = %s WHERE usuario_id = %s', (modo_tela, self.usuario_logado['id']))
-                conexao.commit()
-        except mysql.connector.Error as e:
+            salvar_config = SalvarConfiguracoes()
+            salvar_config.salvar_preferencia_modo(self.modo.modo_atual, self.usuario_logado)
+        except Exception as e:
             self.mostrar_erro(f"Erro ao salvar preferência de modo: {e}")
 
     def atualizar_switch(self):
@@ -609,10 +538,16 @@ class JanelaScannerRede(QWidget):
         self.aplicar_modo()
 
     def carregar_preferencias_usuario(self):
-        modos = ModosPrincipais()
-        modos.carregar_preferencias_usuario()
-        self.fonte_padrao = modos.fonte_padrao
-        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
+        carregar_preferencias = CarregarPreferenciasUsuario()
+        preferencias = carregar_preferencias.carregar_preferencias_usuario(self.usuario_logado['id'])
+        if preferencias:
+            self.fonte_padrao = preferencias['fonte_perso'] if preferencias['fonte_alterada'] else ModosPrincipais().fonte_padrao
+            self.tamanho_fonte_padrao = preferencias['tamanho_fonte_perso'] if preferencias['tamanho_fonte_alterado'] else ModosPrincipais().tamanho_fonte_padrao
+        else:
+            modos = ModosPrincipais()
+            modos.carregar_preferencias_usuario()
+            self.fonte_padrao = modos.fonte_padrao
+            self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Scanner de Rede')
@@ -705,10 +640,16 @@ class JanelaPing(QWidget):
         self.aplicar_modo()
 
     def carregar_preferencias_usuario(self):
-        modos = ModosPrincipais()
-        modos.carregar_preferencias_usuario()
-        self.fonte_padrao = modos.fonte_padrao
-        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
+        carregar_preferencias = CarregarPreferenciasUsuario()
+        preferencias = carregar_preferencias.carregar_preferencias_usuario(self.usuario_logado['id'])
+        if preferencias:
+            self.fonte_padrao = preferencias['fonte_perso'] if preferencias['fonte_alterada'] else ModosPrincipais().fonte_padrao
+            self.tamanho_fonte_padrao = preferencias['tamanho_fonte_perso'] if preferencias['tamanho_fonte_alterado'] else ModosPrincipais().tamanho_fonte_padrao
+        else:
+            modos = ModosPrincipais()
+            modos.carregar_preferencias_usuario()
+            self.fonte_padrao = modos.fonte_padrao
+            self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Ping')
@@ -1201,10 +1142,16 @@ class JanelaConfigUsuarios(QWidget):
         self.aplicar_modo()
 
     def carregar_preferencias_usuario(self):
-        modos = ModosPrincipais()
-        modos.carregar_preferencias_usuario()
-        self.fonte_padrao = modos.fonte_padrao
-        self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
+        carregar_preferencias = CarregarPreferenciasUsuario()
+        preferencias = carregar_preferencias.carregar_preferencias_usuario(self.usuario_logado['id'])
+        if preferencias:
+            self.fonte_padrao = preferencias['fonte_perso'] if preferencias['fonte_alterada'] else ModosPrincipais().fonte_padrao
+            self.tamanho_fonte_padrao = preferencias['tamanho_fonte_perso'] if preferencias['tamanho_fonte_alterado'] else ModosPrincipais().tamanho_fonte_padrao
+        else:
+            modos = ModosPrincipais()
+            modos.carregar_preferencias_usuario()
+            self.fonte_padrao = modos.fonte_padrao
+            self.tamanho_fonte_padrao = modos.tamanho_fonte_padrao
 
     def inicializarUI(self):
         self.setWindowTitle('Configurações de Usuários')
@@ -1347,8 +1294,12 @@ class JanelaConfigUsuarios(QWidget):
                 self.input_usuario.setFocus()
             else:
                 self.janela_adicionar.close()
-        except Exception as e:
+        except PermissionError as e:
+            self.mostrar_erro(str(e))
+        except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao adicionar usuário: {e}")
+        except Exception as e:
+            self.mostrar_erro(f"Erro inesperado: {e}")
 
     def remover_usuario(self):
         if not self.usuario_logado['is_admin']:
@@ -1672,12 +1623,20 @@ class JanelaConfigPrograma(QWidget):
             layout.addWidget(QLabel('Fonte Global:'))
             layout.addWidget(self.combo_fonte_padrao)
 
+            # Populate font combo box
+            for font in QFontDatabase().families():
+                self.combo_fonte_padrao.addItem(font)
+
             self.combo_tamanho_fonte_padrao = QComboBox(self)
             self.combo_tamanho_fonte_padrao.setEditable(True)
             self.combo_tamanho_fonte_padrao.lineEdit().setReadOnly(True)
             self.combo_tamanho_fonte_padrao.lineEdit().setAlignment(Qt.AlignCenter)
             layout.addWidget(QLabel('Tamanho da Fonte Global:'))
             layout.addWidget(self.combo_tamanho_fonte_padrao)
+
+            # Populate font size combo box
+            for size in range(8, 30):
+                self.combo_tamanho_fonte_padrao.addItem(str(size))
 
             self.combo_modo_padrao = QComboBox(self)
             self.combo_modo_padrao.addItems(['Claro', 'Escuro'])
@@ -1691,12 +1650,20 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Fonte do Usuário:'))
         layout.addWidget(self.combo_fonte_usuario)
 
+        # Populate user font combo box
+        for font in QFontDatabase().families():
+            self.combo_fonte_usuario.addItem(font)
+
         self.combo_tamanho_fonte_usuario = QComboBox(self)
         self.combo_tamanho_fonte_usuario.setEditable(True)
         self.combo_tamanho_fonte_usuario.lineEdit().setReadOnly(True)
         self.combo_tamanho_fonte_usuario.lineEdit().setAlignment(Qt.AlignCenter)
         layout.addWidget(QLabel('Tamanho da Fonte do Usuário:'))
         layout.addWidget(self.combo_tamanho_fonte_usuario)
+
+        # Populate user font size combo box
+        for size in range(8, 30):
+            self.combo_tamanho_fonte_usuario.addItem(str(size))
 
         self.checkbox_resetar_fonte = QCheckBox('Resetar Fonte para Padrão', self)
         self.checkbox_resetar_fonte.stateChanged.connect(self.resetar_fonte_padrao)
@@ -1844,31 +1811,66 @@ class JanelaConfigPrograma(QWidget):
         self.combo_tamanho_fonte_usuario.lineEdit().installEventFilter(self)
 
     def carregar_configuracoes_perso_usuario(self):
-        config_db = ConfiguracaoProgramaDB(self)
         try:
-            if self.usuario_logado['is_admin']:
-                configuracao = config_db.obter_configuracao(1)
-                if configuracao:
-                    self.input_logo_principal.setText(configuracao[1])
-                    self.input_logo_rodape.setText(configuracao[2])
-                    self.combo_fonte_padrao.setCurrentText(configuracao[3])
-                    self.combo_tamanho_fonte_padrao.setCurrentText(str(configuracao[4]))
-                    self.combo_modo_padrao.setCurrentIndex(configuracao[5])
+            carregar_preferencias = CarregarPreferenciasUsuario()
+            preferencias = carregar_preferencias.carregar_preferencias_usuario(self.usuario_logado['id'])
+            if preferencias:
+                if self.usuario_logado['is_admin']:
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.input_logo_principal.setText(carregar_config.logo_principal)
+                    self.input_logo_rodape.setText(carregar_config.logo_rodape)
+                    self.combo_fonte_padrao.setCurrentText(carregar_config.fonte_padrao)
+                    self.combo_tamanho_fonte_padrao.setCurrentText(str(carregar_config.tamanho_fonte_padrao))
+                    self.combo_modo_padrao.setCurrentIndex(1 if carregar_config.modo_atual == 'escuro' else 0)
 
-            preferencia_usuario = config_db.carregar_preferencias_usuario(self.usuario_logado['id'])
-            if preferencia_usuario:
-                fonte_perso = preferencia_usuario['fonte_perso']
-                tamanho_fonte_perso = preferencia_usuario['tamanho_fonte_perso']
-                fonte_alterada = preferencia_usuario['fonte_alterada']
-                tamanho_fonte_alterado = preferencia_usuario['tamanho_fonte_alterado']
+                fonte_perso = preferencias['fonte_perso']
+                tamanho_fonte_perso = preferencias['tamanho_fonte_perso']
+                fonte_alterada = preferencias['fonte_alterada']
+                tamanho_fonte_alterado = preferencias['tamanho_fonte_alterado']
                 if fonte_alterada:
                     self.combo_fonte_usuario.setCurrentText(fonte_perso)
                 else:
-                    self.combo_fonte_usuario.setCurrentText(configuracao[3] if self.usuario_logado['is_admin'] and configuracao else "")
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.combo_fonte_usuario.setCurrentText(carregar_config.fonte_padrao if self.usuario_logado['is_admin'] else "")
                 if tamanho_fonte_alterado:
                     self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
                 else:
-                    self.combo_tamanho_fonte_usuario.setCurrentText(str(configuracao[4] if self.usuario_logado['is_admin'] and configuracao else ""))
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.combo_tamanho_fonte_usuario.setCurrentText(str(carregar_config.tamanho_fonte_padrao if self.usuario_logado['is_admin'] else ""))
+        except mysql.connector.Error as e:
+            self.mostrar_erro(f"Erro ao carregar configurações: {e}")
+
+    def carregar_configuracoes_perso_usuario(self):
+        try:
+            carregar_preferencias = CarregarPreferenciasUsuario()
+            preferencias = carregar_preferencias.carregar_preferencias_usuario(self.usuario_logado['id'])
+            if preferencias:
+                if self.usuario_logado['is_admin']:
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.input_logo_principal.setText(carregar_config.logo_principal)
+                    self.input_logo_rodape.setText(carregar_config.logo_rodape)
+                    self.combo_fonte_padrao.setCurrentText(carregar_config.fonte_padrao)
+                    self.combo_tamanho_fonte_padrao.setCurrentText(str(carregar_config.tamanho_fonte_padrao))
+                    self.combo_modo_padrao.setCurrentIndex(1 if carregar_config.modo_atual == 'escuro' else 0)
+
+                fonte_perso = preferencias['fonte_perso']
+                tamanho_fonte_perso = preferencias['tamanho_fonte_perso']
+                fonte_alterada = preferencias['fonte_alterada']
+                tamanho_fonte_alterado = preferencias['tamanho_fonte_alterado']
+                if fonte_alterada:
+                    self.combo_fonte_usuario.setCurrentText(fonte_perso)
+                else:
+                    carregar_config = CarregarConfiguracoes()
+                    carregar_config.carregar_configuracoes()
+                    self.combo_fonte_usuario.setCurrentText(carregar_config.fonte_padrao if self.usuario_logado['is_admin'] else "")
+                if tamanho_fonte_alterado:
+                    self.combo_tamanho_fonte_usuario.setCurrentText(str(tamanho_fonte_perso))
+                else:
+                    self.combo_tamanho_fonte_usuario.setCurrentText(str(carregar_config.tamanho_fonte_padrao if self.usuario_logado['is_admin'] else ""))
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao carregar configurações: {e}")
 
@@ -1914,33 +1916,44 @@ class JanelaConfigPrograma(QWidget):
             self.combo_tamanho_fonte_usuario.setCurrentText("")
 
     def salvar_configuracoes(self):
-        fonte_usuario = self.combo_fonte_usuario.currentText()
-        tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
-        logo_principal = self.input_logo_principal.text() if self.usuario_logado['is_admin'] else None
-        logo_rodape = self.input_logo_rodape.text() if self.usuario_logado['is_admin'] else None
+        caminho_logo_principal = self.input_logo_principal.text() if self.usuario_logado['is_admin'] else None
+        caminho_logo_rodape = self.input_logo_rodape.text() if self.usuario_logado['is_admin'] else None
         fonte_padrao = self.combo_fonte_padrao.currentText() if self.usuario_logado['is_admin'] else None
         tamanho_fonte_padrao = self.combo_tamanho_fonte_padrao.currentText() if self.usuario_logado['is_admin'] else None
         modo_padrao = self.combo_modo_padrao.currentIndex() if self.usuario_logado['is_admin'] else None
+        fonte_usuario = self.combo_fonte_usuario.currentText()
+        tamanho_fonte_usuario = self.combo_tamanho_fonte_usuario.currentText()
         resetar_fonte = self.checkbox_resetar_fonte.isChecked()
 
-        config_db = ConfiguracaoProgramaDB(self)
-
         try:
-            config_db.salvar_configuracoes(
-                self.usuario_logado,
-                fonte_usuario,
-                tamanho_fonte_usuario,
-                logo_principal,
-                logo_rodape,
-                fonte_padrao,
-                tamanho_fonte_padrao,
-                modo_padrao,
-                resetar_fonte
-            )
-            QMessageBox.information(self, 'Sucesso', 'Configurações atualizadas com sucesso.')
+            salvar_config = SalvarConfiguracoes()
+            if self.usuario_logado['is_admin']:
+                salvar_config.salvar_configuracoes(
+                    caminho_logo_principal=caminho_logo_principal,
+                    caminho_logo_rodape=caminho_logo_rodape,
+                    fonte_padrao=fonte_padrao,
+                    tamanho_fonte_padrao=tamanho_fonte_padrao,
+                    modo_padrao=modo_padrao,
+                    resetar_fonte=resetar_fonte,
+                    fonte_usuario=fonte_usuario,
+                    tamanho_fonte_usuario=tamanho_fonte_usuario,
+                    usuario_logado=self.usuario_logado
+                )
+            else:
+                salvar_config.editar_preferencias_usuario(
+                    usuario_id=self.usuario_logado['id'],
+                    nova_fonte_perso=fonte_usuario,
+                    novo_tamanho_fonte_perso=tamanho_fonte_usuario
+                )
+            QMessageBox.information(self, 'Sucesso', 'Configurações salvas com sucesso.')
             self.voltar_janela_anterior()
+        except AttributeError as e:
+            if 'input_logo_principal' in str(e) or 'input_logo_rodape' in str(e):
+                self.mostrar_erro("Erro ao salvar configurações: Atributo não encontrado. Verifique se você tem permissão de administrador.")
+            else:
+                self.mostrar_erro(f"Erro ao salvar configurações: {e}")
         except Exception as e:
-            QMessageBox.critical(self, 'Erro', f"Erro ao salvar configurações: {e}")
+            self.mostrar_erro(f"Erro ao salvar configurações: {e}")
 
     def voltar_janela_anterior(self):
         self.janela_anterior = JanelaPrincipal(self.usuario_logado, self.modo)

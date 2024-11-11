@@ -88,3 +88,70 @@ class ConfigUsuarios:
             cursor = conexao.cursor()
             cursor.execute('SELECT id, usuario, nome_completo, email, is_admin FROM usuarios WHERE id = %s', (usuario_id,))
             return cursor.fetchone()
+
+    def verificar_login(self, usuario, senha):
+        if not usuario or not senha:
+            raise ValueError("Por favor, preencha todos os campos.")
+
+        try:
+            with self._connect() as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, senha, ultimo_login FROM usuarios WHERE usuario = %s', (usuario,))
+                resultado = cursor.fetchone()
+        except mysql.connector.Error as e:
+            raise ConnectionError(f"Erro ao verificar login: {e}")
+
+        if resultado:
+            usuario_id, senha_armazenada, ultimo_login = resultado
+            senha_hash = hashlib.sha256(senha.encode()).hexdigest()
+
+            if senha_hash == senha_armazenada:
+                if usuario_id == 1 and not ultimo_login:
+                    return "alterar_senha"
+                else:
+                    self.registrar_login(usuario_id)
+                    return "login_sucesso"
+            else:
+                raise ValueError("Senha incorreta.")
+        else:
+            raise ValueError("Usuário não encontrado.")
+
+    def registrar_login(self, usuario_id):
+        data_login = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with self._connect() as conexao:
+            cursor = conexao.cursor()
+            cursor.execute('UPDATE usuarios SET ultimo_login = %s WHERE id = %s', (data_login, usuario_id))
+            conexao.commit()
+
+    def salvar_nova_senha(self, usuario, nova_senha, confirmar_senha):
+        if not nova_senha or not confirmar_senha:
+            raise ValueError("Todos os campos são obrigatórios.")
+
+        if nova_senha != confirmar_senha:
+            raise ValueError("As senhas não coincidem.")
+
+        with self._connect() as conexao:
+            cursor = conexao.cursor()
+            cursor.execute('SELECT senha FROM usuarios WHERE usuario = %s', (usuario,))
+            senha_atual_hash = cursor.fetchone()[0]
+            nova_senha_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+
+            if nova_senha_hash == senha_atual_hash:
+                raise ValueError("A nova senha não pode ser igual à senha atual.")
+
+            cursor.execute('UPDATE usuarios SET senha = %s, ultimo_login = %s WHERE usuario = %s', 
+                           (nova_senha_hash, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), usuario))
+            conexao.commit()
+            self.registrar_login(usuario)
+
+    def obter_usuario_logado(self, usuario):
+        try:
+            with self._connect() as conexao:
+                cursor = conexao.cursor()
+                cursor.execute('SELECT id, usuario, is_admin FROM usuarios WHERE usuario = %s', (usuario,))
+                resultado = cursor.fetchone()
+                if resultado:
+                    return {'id': resultado[0], 'usuario': resultado[1], 'is_admin': resultado[2]}
+        except mysql.connector.Error as e:
+            raise ConnectionError(f"Erro ao obter usuário logado: {e}")
+        return None
