@@ -100,6 +100,14 @@ class JanelaLogin(QWidget):
         self.carregar_configuracoes()
         self.inicializarUI()
         self.timer = QTimer(self)
+        try:
+            response = requests.get('https://augusto.tec.br/pi/f5.png')
+            response.raise_for_status()
+            pixmap = QPixmap()
+            pixmap.loadFromData(QByteArray(response.content))
+            self.setWindowIcon(QIcon(pixmap))
+        except requests.RequestException as e:
+            self.mostrar_erro(f"Erro ao carregar ícone da janela: {e}")
 
     def carregar_configuracoes(self):
         try:
