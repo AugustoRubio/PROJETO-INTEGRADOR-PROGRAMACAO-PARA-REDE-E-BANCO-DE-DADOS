@@ -916,7 +916,15 @@ class JanelaResultadosScanner(QWidget):
             for resultado in self.resultados:
                 row_position = self.tabela_resultados.rowCount()
                 self.tabela_resultados.insertRow(row_position)
-                for column, data in enumerate(resultado.values() if isinstance(resultado, dict) else resultado):
+                valores = [
+                    resultado.get('usuario_id', ''),
+                    resultado.get('data', ''),
+                    resultado.get('hostname', ''),
+                    resultado.get('mac_address', ''),
+                    resultado.get('ip', ''),
+                    resultado.get('portas', '')
+                ]
+                for column, data in enumerate(valores):
                     self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
             self.tabela_resultados.resizeColumnsToContents()
         except Exception as e:
@@ -934,7 +942,15 @@ class JanelaResultadosScanner(QWidget):
                 for resultado in resultados_salvos:
                     row_position = self.tabela_resultados.rowCount()
                     self.tabela_resultados.insertRow(row_position)
-                    for column, data in enumerate(resultado.values() if isinstance(resultado, dict) else resultado):
+                    valores = [
+                        resultado.get('usuario_id', ''),
+                        resultado.get('data', ''),
+                        resultado.get('hostname', ''),
+                        resultado.get('mac_address', ''),
+                        resultado.get('ip', ''),
+                        resultado.get('portas', '')
+                    ]
+                    for column, data in enumerate(valores):
                         self.tabela_resultados.setItem(row_position, column, QTableWidgetItem(str(data)))
                 self.tabela_resultados.resizeColumnsToContents()
             except Exception as e:
@@ -1079,7 +1095,7 @@ class JanelaResultadosData(QWidget):
 
         self.tabela_resultados = QTableWidget(self)
         self.tabela_resultados.setColumnCount(5)
-        self.tabela_resultados.setHorizontalHeaderLabels(['Data', 'Hostname', 'MAC Address', 'IP', 'Portas'])
+        self.tabela_resultados.setHorizontalHeaderLabels(['Usuário ID', 'Data', 'Hostname', 'MAC Address', 'IP', 'Portas'])
         self.tabela_resultados.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.tabela_resultados.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         layout.addWidget(self.tabela_resultados)

@@ -41,29 +41,28 @@ class ScannerRede:
 
         nm = nmap.PortScanner()
         try:
-            with nm:
-                nm.scan(hosts=str(rede), arguments=argumentos_str)
+            nm.scan(hosts=str(rede), arguments=argumentos_str)
 
-                resultados = []
-                for host in nm.all_hosts():
-                    nome_host = nm[host].hostname() if self.escaneamento_rapido else 'N/A'
-                    endereco_mac = nm[host]['addresses'].get('mac', 'N/A')
-                    endereco_ip = nm[host]['addresses'].get('ipv4', 'N/A')
-                    portas_abertas = ', '.join([
-                        f"{port}/ABERTA" if port.isdigit() and nm[host].has_tcp(int(port)) and 'tcp' in nm[host] and int(port) in nm[host]['tcp'] and nm[host]['tcp'][int(port)]['state'] == 'open' 
-                        else f"{port}/FECHADA" 
-                        for port in self.portas_selecionadas
-                    ])
-                    if not portas_abertas:
-                        portas_abertas = 'N/D'
-                    resultados.append((nome_host, endereco_mac, endereco_ip, portas_abertas))
+            resultados = []
+            for host in nm.all_hosts():
+                nome_host = nm[host].hostname() if self.escaneamento_rapido else 'N/A'
+                endereco_mac = nm[host]['addresses'].get('mac', 'N/A')
+                endereco_ip = nm[host]['addresses'].get('ipv4', 'N/A')
+                portas_abertas = ', '.join([
+                    f"{port}/ABERTA" if port.isdigit() and nm[host].has_tcp(int(port)) and 'tcp' in nm[host] and int(port) in nm[host]['tcp'] and nm[host]['tcp'][int(port)]['state'] == 'open' 
+                    else f"{port}/FECHADA" 
+                    for port in self.portas_selecionadas
+                ])
+                if not portas_abertas:
+                    portas_abertas = 'N/D'
+                resultados.append((nome_host, endereco_mac, endereco_ip, portas_abertas))
 
-                self.salvar_resultados(resultados)
+            self.salvar_resultados(resultados)
 
-                self.escaneamento_concluido = True  # Marca o escaneamento como concluído
+            self.escaneamento_concluido = True  # Marca o escaneamento como concluído
 
-                # Retorna os resultados do escaneamento
-                return resultados
+            # Retorna os resultados do escaneamento
+            return resultados
         except Exception as e:
             print(f"Erro ao executar o comando nmap: {e}")
             self.escaneamento_concluido = False  # Marca o escaneamento como não concluído em caso de erro
