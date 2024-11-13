@@ -28,7 +28,7 @@ import sys
 import mysql.connector
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea, QInputDialog, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QPixmap, QMovie, QIcon
-from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray
+from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray, QThreadPool, QRunnable
 from PyQt5.QtGui import QFont, QFontDatabase
 
 import os
@@ -55,6 +55,7 @@ from scanner_rede import PingIP, RedeAtual, CarregarResultadosCalendario
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtWidgets import QHeaderView
 from modos import ModosPrincipais
+import ipaddress
 
 class ScannerRede:
     def __init__(self, portas_selecionadas, escaneamento_rapido):
@@ -736,14 +737,30 @@ class JanelaPing(QWidget):
             return
 
         try:
-            ping = PingIP(ip)
-            resultado = ping.ping()
-            if resultado:
-                self.label_resultado.setText(f"PING para {ip} bem-sucedido.")
-            else:
-                self.label_resultado.setText(f"PING para {ip} falhou.")
-        except Exception as e:
-            self.mostrar_erro(f"Erro ao fazer PING: {e}")
+            # Validando o endereço IP
+            ipaddress.ip_address(ip)
+        except ValueError:
+            self.label_resultado.setText(f"Endereço IP inválido: {ip}")
+            return
+
+        self.label_resultado.setText("Executando PING...")
+
+        def ping_thread():
+            try:
+                ping = PingIP(ip)
+                resultado = ping.ping()
+                if resultado == 1:
+                    self.label_resultado.setText(f"PING para {ip} foi bem-sucedido.")
+                elif resultado == 0:
+                    self.label_resultado.setText(f"PING para {ip} falhou.")
+            except Exception as e:
+                self.label_resultado.setText(f"Erro ao executar o PING: {e}")
+
+        class PingRunnable(QRunnable):
+            def run(self):
+                ping_thread()
+
+        QThreadPool.globalInstance().start(PingRunnable())
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)

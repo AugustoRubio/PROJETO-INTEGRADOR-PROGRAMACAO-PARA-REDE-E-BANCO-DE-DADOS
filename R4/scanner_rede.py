@@ -5,6 +5,7 @@ from datetime import datetime
 import socket
 import ipaddress
 import locale
+import platform
 
 # Define a localidade para PT-BR
 locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
@@ -127,19 +128,24 @@ class PingIP:
 
     def ping(self):
         try:
-            # Executa o comando ping
-            num_pacotes = 2  # Número de pacotes a serem enviados
-            output = subprocess.run(['ping', '-n', str(num_pacotes), self.ip], capture_output=True, text=True)
+            # Define o comando de ping baseado no sistema operacional
+            if platform.system().lower() == 'windows':
+                command = ['ping', '-n', '3', '-w', '1000', self.ip]
+            else:
+                command = ['ping', '-c', '3', '-W', '1', self.ip]
+
+            output = subprocess.run(command, capture_output=True, text=True)
 
             # Verifica a quantidade de pacotes recebidos
-            for line in output.stdout.splitlines():
-                if "Received =" in line:
-                    received_packets = int(line.split("Received = ")[1].split(",")[0])
-                    return received_packets > 0
-            return False
+            if output.returncode == 0:
+                resultado = 1  # Ping bem-sucedido
+            else:
+                resultado = 0  # Ping falhou
         except Exception as e:
             print(f"Erro ao executar o comando ping: {e}")
-            return False
+            resultado = 0  # Erro ao executar o comando ping
+        
+        return resultado
 
 
 class CarregarResultadosCalendario:
