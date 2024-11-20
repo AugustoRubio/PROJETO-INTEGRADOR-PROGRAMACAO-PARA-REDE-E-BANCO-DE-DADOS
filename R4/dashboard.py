@@ -1,9 +1,8 @@
 from collections import defaultdict
 import requests
-
-# Importa diretamente o PingIP do módulo scanner_rede
 from scanner_rede import PingIP
 
+#Inicio da classe MonitorDeHardware
 class MonitorDeHardware:
     def __init__(self, ip='localhost', porta=8085):
         self.ip = ip
@@ -28,7 +27,9 @@ class MonitorDeHardware:
                 return "Offline"
         except requests.exceptions.RequestException:
             return "Offline"
+#FIm da classe MonitorDeHardware
 
+#Inicio da classe VerificadorDeStatus
 class VerificadorDeStatus:
     def __init__(self):
         self.ping_instances = {}
@@ -41,7 +42,9 @@ class VerificadorDeStatus:
             return "Online"
         else:
             return "Offline"
+#Fim da classe VerificadorDeStatus
 
+#Inicio da classe ExtratorDeInfoHardware
 class ExtratorDeInfoHardware:
     @staticmethod
     # Extrai informações de um nó específico
@@ -93,6 +96,7 @@ class ExtratorDeInfoHardware:
             percorrer(info)
 
         return sensores
+#Fim da classe ExtratorDeInfoHardware
 
 # Agrupa e calcula a média dos valores por tipo de sensor
 def agrupar_e_media_por_tipo(info_extraida):
@@ -116,9 +120,7 @@ def agrupar_e_media_por_tipo(info_extraida):
     dados_media = {k: sum(v) / len(v) for k, v in dados_agrupados.items() if v}
     return dados_media
 
-# Exemplo de uso
 if __name__ == '__main__':
-
     # Define o IP e a porta desejados
     ip = 'localhost'  # ou qualquer outro IP
     porta = 8085  # ou qualquer outra porta

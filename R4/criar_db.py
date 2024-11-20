@@ -3,6 +3,7 @@ import os
 import hashlib
 import configparser
 
+#Inicio da classe GerenciadorBancoDados
 class GerenciadorBancoDados:
     def __init__(self, host, user, password, database, port):
         self.host = host
@@ -159,6 +160,7 @@ class GerenciadorBancoDados:
 
         except mysql.connector.Error as e:
             print(e)
+#Fim da classe GerenciadorBancoDados
 
 def principal():
     config = configparser.ConfigParser()

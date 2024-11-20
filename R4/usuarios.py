@@ -2,6 +2,7 @@ import hashlib
 import mysql.connector
 from datetime import datetime
 
+#Inicio da classe ConfigUsuarios
 class ConfigUsuarios:
     def __init__(self, usuario_logado, host, user, password, database, port):
         self.usuario_logado = usuario_logado
@@ -155,3 +156,4 @@ class ConfigUsuarios:
         except mysql.connector.Error as e:
             raise ConnectionError(f"Erro ao obter usuário logado: {e}")
         return None
+#Fim da classe ConfigUsuarios

@@ -1,6 +1,7 @@
 import mysql.connector
 import configparser
 
+#Inicio da classe InserirConfiguracao
 class InserirConfiguracao:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -22,7 +23,9 @@ class InserirConfiguracao:
                     VALUES (%s, %s, %s, %s, %s)
                 ''', (data, logo_principal, logo_rodape, fonte_principal, tamanho_fonte))
                 conn.commit()
+#Fim da classe InserirConfiguracao
 
+#Inicio da classe AtualizarConfiguracao
 class AtualizarConfiguracao:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -35,7 +38,9 @@ class AtualizarConfiguracao:
             'database': mysql_config['database'],
             'port': int(mysql_config['port']),
         }
+#Fim da classe AtualizarConfiguracao
 
+#Inicio da classe ObterConfiguracao
 class ObterConfiguracao:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -55,7 +60,9 @@ class ObterConfiguracao:
                 cursor.execute('SELECT * FROM config_programa WHERE id = %s', (id_config,))
                 result = cursor.fetchone()
                 return result
+#Fim da classe ObterConfiguracao
 
+#Inicio da classe AtualizarConfiguracao
 class CarregarPreferenciasUsuario:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -95,7 +102,9 @@ class CarregarPreferenciasUsuario:
                     
                     return preferencias_usuario
                 return None
-    
+#Fim da classe CarregarPreferenciasUsuario
+
+#Inicio da classe AtualizarConfiguracao
 class DeletarConfiguracao:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -114,7 +123,9 @@ class DeletarConfiguracao:
             with conn.cursor() as cursor:
                 cursor.execute('DELETE FROM config_programa WHERE id = %s', (id_config,))
                 conn.commit()
+#Fim da classe DeletarConfiguracao
 
+#Inicio da classe AtualizarConfiguracao
 class SalvarConfiguracoes:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -197,7 +208,9 @@ class SalvarConfiguracoes:
                     conn.commit()
         except mysql.connector.Error as e:
             self.mostrar_erro(f"Erro ao editar preferências do usuário: {e}")
+#Fim da classe SalvarConfiguracoes
 
+#Inicio da classe CarregarConfiguracoes
 class CarregarConfiguracoes:
     def __init__(self):
         config = configparser.ConfigParser()
@@ -229,5 +242,4 @@ class CarregarConfiguracoes:
             self.modo_atual = 'escuro' if modo_global == 1 else 'claro'
         else:
             self.mostrar_erro("Configuração não encontrada no banco de dados.")
-
-    
+#Fim da classe CarregarConfiguracoes

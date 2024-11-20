@@ -6,8 +6,6 @@ import socket
 import ipaddress
 import locale
 import platform
-
-# Define a localidade para PT-BR
 locale.setlocale(locale.LC_TIME, 'pt_BR.utf8')
 
 # Inicio da classe ScannerRede
@@ -105,7 +103,9 @@ class ScannerRede:
         except mysql.connector.Error as e:
             print(f"Erro ao obter informações: {e}")
             return None
+#Fim da classe ScannerRede
 
+#inicio da classe RedeAtual
 class RedeAtual:
     def __init__(self):
         pass
@@ -120,8 +120,9 @@ class RedeAtual:
         except Exception as e:
             print(f"Erro ao obter a rede atual: {e}")
             return None
-# Fim da classe RedeAtual
+#Fim da classe RedeAtual
 
+#Inicio da classe PingIP
 class PingIP:
     def __init__(self, ip):
         self.ip = ip
@@ -146,8 +147,9 @@ class PingIP:
             resultado = 0  # Erro ao executar o comando ping
         
         return resultado
+#Fim da classe PingIP
 
-
+#Inicio da classe CarregarResultadosCalendario
 class CarregarResultadosCalendario:
     def __init__(self, host, user, password, database, port, data_selecionada):
         self.host = host
@@ -185,3 +187,4 @@ class CarregarResultadosCalendario:
                 return resultados_formatados
         except mysql.connector.Error as e:
             return f"Erro ao buscar informações: {e}"
+#Fim da classe CarregarResultadosCalendario

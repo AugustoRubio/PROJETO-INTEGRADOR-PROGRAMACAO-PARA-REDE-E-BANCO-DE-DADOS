@@ -26,7 +26,7 @@ CheckDependencias.check_and_install_dependencies()
 
 import sys
 import mysql.connector
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QFileDialog, QHeaderView, QAbstractScrollArea, QInputDialog, QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QMessageBox, QDesktopWidget, QCheckBox, QListWidget, QListWidgetItem, QCalendarWidget, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractScrollArea, QInputDialog, QTableWidget, QTableWidgetItem
 from PyQt5.QtGui import QPixmap, QMovie, QIcon
 from PyQt5.QtCore import Qt, QEvent, QTimer, QByteArray, QThreadPool, QRunnable
 from PyQt5.QtGui import QFont, QFontDatabase
@@ -94,6 +94,7 @@ port = config['mysql'].getint('port')
 verificador_bd = VerificadorBancoDados(host, user, password, database, port)
 verificador_bd.verificar_ou_criar_bd()
 
+#Inicio da classe JanelaLogin
 class JanelaLogin(QWidget):
     def __init__(self):
         super().__init__()
@@ -333,8 +334,9 @@ class JanelaLogin(QWidget):
         """)
         if self.fonte_padrao and self.tamanho_fonte_padrao:
             self.setFont(QFont(self.fonte_padrao, int(self.tamanho_fonte_padrao)))
+#Fim da classe JanelaLogin
 
-#Começo da classe JanelaPrincipal
+#Inicio da classe JanelaPrincipal
 class JanelaPrincipal(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
@@ -535,8 +537,9 @@ class JanelaPrincipal(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-                
-#Começo da classe JanelaScannerRede
+#Fim da classe JanelaPrincipal
+
+#Inicio da classe JanelaScannerRede
 class JanelaScannerRede(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
@@ -637,7 +640,8 @@ class JanelaScannerRede(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-    
+#Fim da classe JanelaScannerRede    
+
 #Inicio da classe JanelaPing
 class JanelaPing(QWidget):
     def __init__(self, usuario_logado, modo):
@@ -765,7 +769,8 @@ class JanelaPing(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-        
+#Fim da classe JanelaPing
+   
 # Inicio da classe JanelaOpcoesScanner
 class JanelaOpcoesScanner(QWidget):
     def __init__(self, usuario_logado, modo):
@@ -881,7 +886,7 @@ class JanelaOpcoesScanner(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
-# Fim da classe JanelaOpcoesScanner
+#Fim da classe JanelaOpcoesScanner
 
 #Inicio da classe JanelaResultadosScanner
 class JanelaResultadosScanner(QWidget):
@@ -1001,6 +1006,7 @@ class JanelaResultadosScanner(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaResultadosScanner
 
 #Inicio da classe JanelaVerInformacoes
 class JanelaVerInformacoes(QWidget):
@@ -1086,7 +1092,9 @@ class JanelaVerInformacoes(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaVerInformacoes
 
+#Inicio da classe JanelaResultadosData
 class JanelaResultadosData(QWidget):
     def __init__(self, usuario_logado, modo, data_selecionada):
         super().__init__()
@@ -1198,7 +1206,9 @@ class JanelaResultadosData(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaResultadosData
 
+#Inicio da classe JanelaConfigUsuarios
 class JanelaConfigUsuarios(QWidget):
     def __init__(self, usuario_logado, modo):
         super().__init__()
@@ -1636,6 +1646,7 @@ class JanelaConfigUsuarios(QWidget):
 
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
+#Fim da classe JanelaConfigUsuarios
 
 #Inicio da classe JanelaConfigPrograma
 class JanelaConfigPrograma(QWidget):
@@ -1691,7 +1702,6 @@ class JanelaConfigPrograma(QWidget):
             layout.addWidget(QLabel('Fonte Global:'))
             layout.addWidget(self.combo_fonte_padrao)
 
-            # Populate font combo box
             for font in QFontDatabase().families():
                 self.combo_fonte_padrao.addItem(font)
 
@@ -1702,7 +1712,6 @@ class JanelaConfigPrograma(QWidget):
             layout.addWidget(QLabel('Tamanho da Fonte Global:'))
             layout.addWidget(self.combo_tamanho_fonte_padrao)
 
-            # Populate font size combo box
             for size in range(8, 30):
                 self.combo_tamanho_fonte_padrao.addItem(str(size))
 
@@ -1718,7 +1727,6 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Fonte do Usuário:'))
         layout.addWidget(self.combo_fonte_usuario)
 
-        # Populate user font combo box
         for font in QFontDatabase().families():
             self.combo_fonte_usuario.addItem(font)
 
@@ -1729,7 +1737,6 @@ class JanelaConfigPrograma(QWidget):
         layout.addWidget(QLabel('Tamanho da Fonte do Usuário:'))
         layout.addWidget(self.combo_tamanho_fonte_usuario)
 
-        # Populate user font size combo box
         for size in range(8, 30):
             self.combo_tamanho_fonte_usuario.addItem(str(size))
 
@@ -2072,7 +2079,9 @@ class PingThread(QThread):
 
     def stop(self):
         self._is_running = False
+#Fim da classe JanelaConfigPrograma
 
+#Inicio da classe JanelaDashboard
 class SensorThread(QThread):
     resultado_sensor = pyqtSignal(str, str, str, dict)
 
@@ -2095,11 +2104,13 @@ class SensorThread(QThread):
             info_extraida = extractor.obter_info(dados)
             specific_sensors = extractor.encontrar_sensores_especificos(info_extraida)
             self.resultado_sensor.emit(self.usuario, self.ip, self.porta, specific_sensors)
-            QThread.sleep(10)  # Sleep for 10 seconds before the next update
+            QThread.sleep(10)
 
     def stop(self):
         self._is_running = False
+#Fim da classe JanelaDashboard
 
+#Inicio da classe JanelaDashboard
 class PingThread(QThread):
     resultado_ping = pyqtSignal(str, str, str, dict, str)
 
@@ -2136,7 +2147,9 @@ class PingThread(QThread):
 
     def stop(self):
         self._is_running = False
+#Fim da classe JanelaDashboard
 
+#Inicio da classe JanelaDashboard
 class SensorThread(QThread):
     resultado_sensor = pyqtSignal(str, str, str, dict)
 
@@ -2159,10 +2172,11 @@ class SensorThread(QThread):
             info_extraida = extractor.obter_info(dados)
             specific_sensors = extractor.encontrar_sensores_especificos(info_extraida)
             self.resultado_sensor.emit(self.usuario, self.ip, self.porta, specific_sensors)
-            QThread.sleep(10)  # Sleep for 10 seconds before the next update
+            QThread.sleep(10) 
 
     def stop(self):
         self._is_running = False
+#Final da classe JanelaDashboard
 
 #Inicio da Classe JanelaDashboard
 class JanelaDashboard(QWidget):
@@ -2374,6 +2388,7 @@ class JanelaDashboard(QWidget):
         """)
         if self.fonte_padrao and self.tamanho_fonte_padrao:
             self.setFont(QFont(self.fonte_padrao, self.tamanho_fonte_padrao))
+#Fim da classe JanelaDashboard
 
 #Inicio da classe JanelaConfigurarPCs
 class JanelaConfigurarPCs(QWidget):
@@ -2492,6 +2507,8 @@ class JanelaConfigurarPCs(QWidget):
     def mostrar_erro(self, mensagem):
         QMessageBox.critical(self, 'Erro', mensagem)
         self.show()
+#Fim da classe JanelaConfigurarPCs
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

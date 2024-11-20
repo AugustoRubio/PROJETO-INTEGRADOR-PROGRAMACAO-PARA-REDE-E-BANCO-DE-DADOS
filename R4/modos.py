@@ -2,7 +2,6 @@ import configparser
 import os
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QVBoxLayout, QWidget
 from PyQt5.QtGui import QFont
-
 import mysql.connector
 
 #Inicio da classe Modo
@@ -119,6 +118,7 @@ class Modo:
         return estilo
 #Fim da classe Modo
 
+#Inicio da classe ModosPrincipais
 class ModosPrincipais(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -279,7 +279,8 @@ class ModosPrincipais(QMainWindow):
         self.setCentralWidget(container)
 
         self.aplicar_modo()
-        
+#Fim da classe ModosPrincipais
+ 
 if __name__ == "__main__":
     app = QApplication([])
     window = ModosPrincipais()
