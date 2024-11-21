@@ -1,7 +1,7 @@
 <h1 align="center"> PROJETO INTEGRADOR - GRUPO 08 - ANALISADOR DE REDE </h1>
 
 [![Licença](https://img.shields.io/badge/Licença-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Último commit](https://img.shields.io/github/last-commit/seu-usuario/seu-repositorio)](https://github.com/seu-usuario/seu-repositorio/commits/main)
+[![Último commit](https://img.shields.io/github/last-commit/AugustoRubio/PROJETO-INTEGRADOR-PROGRAMACAO-PARA-REDE-E-BANCO-DE-DADOS)](https://github.com/AugustoRubio/PROJETO-INTEGRADOR-PROGRAMACAO-PARA-REDE-E-BANCO-DE-DADOS/commits/main)
 
 > Uma breve descrição do que seu projeto faz.
 
