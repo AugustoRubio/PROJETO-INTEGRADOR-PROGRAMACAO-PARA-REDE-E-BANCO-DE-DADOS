@@ -23,7 +23,7 @@ Projeto Integrador do 2o Semestre, do curso de Tecnologia em Redes de Computador
 
 ## Instalação
 
-Instruções detalhadas de como instalar e configurar o projeto nesse pdf: https://drive.google.com/file/d/1h6KWI_1zYlbeoVaKnz6JgCHonTsosOz7/view?usp=sharing
+Instruções detalhadas de como instalar e configurar o projeto nesse pdf: https://drive.google.com/file/d/13FexEfsj_hR63TR0Fbss0Yc7varXZsHp/view?usp=sharing
 
 ## Meus contatos
 https://www.linkedin.com/in/augusto-rubio/
