@@ -5,7 +5,7 @@
 
 ## Descrição
 
-Projeto Integrador do 2o Semestre, do curso de Tecnologia em Redes de Computadores, desenvolvido e entregue, sob a orientação da professora Karin Pfannemüller Gomes, instrutora da disciplina de Redação Técnica e o professor Maury Souza, responsável pela matéria de Programação para Rede e Banco de Dados.
+Projeto Integrador do 2º Semestre, do curso de Tecnologia em Redes de Computadores, desenvolvido e entregue, sob a orientação da professora Karin Pfannemüller Gomes, instrutora da disciplina de Redação Técnica e o professor Maury Souza, responsável pela matéria de Programação para Rede e Banco de Dados.
 <p align="center">SENAC - TURMA 2024 - 2º SEMESTRE</p>
 <p align="center">ALUNOS:</p>
 <p align="center">Augusto Rubio da Câmara</p>
