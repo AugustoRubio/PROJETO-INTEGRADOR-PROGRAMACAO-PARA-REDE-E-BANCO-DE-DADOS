@@ -25,3 +25,34 @@
 - `Passo 3`: Execute o arquivo criar_db.py para criar o banco de dados de login e usuário. Usuário padrão: admin, senha padrão: teste
 
 - `Passo 4`: Execute o arquivo visual.py para iniciar o programa
+
+<h1 align="center"> PROJETO INTEGRADOR - GRUPO 08 - ANALISADOR DE REDE </h1>
+
+[![Licença](https://img.shields.io/badge/Licença-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Último commit](https://img.shields.io/github/last-commit/seu-usuario/seu-repositorio)](https://github.com/seu-usuario/seu-repositorio/commits/main)
+
+> Uma breve descrição do que seu projeto faz.
+
+## Descrição
+
+Aqui você pode detalhar melhor o que seu projeto faz, para quem ele é útil e quais problemas ele resolve. Seja claro e conciso, use uma linguagem fácil de entender e evite jargões técnicos desnecessários.
+
+**Funcionalidades:**
+
+* Lista das principais funcionalidades do seu projeto.
+* Use marcadores para melhor organização.
+* Seja específico e destaque os pontos fortes.
+
+## Instalação
+
+Instruções detalhadas de como instalar e configurar o projeto. Inclua pré-requisitos, dependências, comandos e exemplos.
+
+```bash
+# Clone o repositório
+git clone [URL inválido removido]
+
+# Acesse o diretório do projeto
+cd seu-repositorio
+
+# Instale as dependências
+npm install
