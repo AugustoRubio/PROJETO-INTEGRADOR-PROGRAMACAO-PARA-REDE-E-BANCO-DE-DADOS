@@ -3,8 +3,6 @@
 [![Licença](https://img.shields.io/badge/Licença-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Último commit](https://img.shields.io/github/last-commit/AugustoRubio/PROJETO-INTEGRADOR-PROGRAMACAO-PARA-REDE-E-BANCO-DE-DADOS)](https://github.com/AugustoRubio/PROJETO-INTEGRADOR-PROGRAMACAO-PARA-REDE-E-BANCO-DE-DADOS/commits/main)
 
-> Uma breve descrição do que seu projeto faz.
-
 ## Descrição
 
 Projeto Integrador do 2o Semestre, do curso de Tecnologia em Redes de Computadores, desenvolvido e entregue, sob a orientação da professora Karin Pfannemüller Gomes, instrutora da disciplina de Redação Técnica e o professor Maury Souza, responsável pela matéria de Programação para Rede e Banco de Dados.
@@ -26,3 +24,6 @@ Projeto Integrador do 2o Semestre, do curso de Tecnologia em Redes de Computador
 ## Instalação
 
 Instruções detalhadas de como instalar e configurar o projeto nesse pdf: https://drive.google.com/file/d/1h6KWI_1zYlbeoVaKnz6JgCHonTsosOz7/view?usp=sharing
+
+## Meus contatos
+https://www.linkedin.com/in/augusto-rubio/
