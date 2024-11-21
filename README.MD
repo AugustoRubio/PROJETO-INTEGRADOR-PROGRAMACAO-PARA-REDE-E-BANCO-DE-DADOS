@@ -3,13 +3,6 @@
 ![Badge em Desenvolvimento](http://img.shields.io/static/v1?label=STATUS&message=EM%20DESENVOLVIMENTO&color=GREEN&style=for-the-badge)
 > :construction: Projeto em construção :construction:
 
-<p align="center">SENAC - TURMA 2024 - 2º SEMESTRE</p>
-<p>ALUNOS:</p>
-<p>Augusto Rubio da Câmara</p>
-<p>Erik Freitas Silva</p>
-<p>Hugo Santos de Lima</p>
-<p>Paulo Sérgio Aparecido Monteiro Feliciano</p>
-<p>Fabricio Lima</p>
 
 #Começando para o programa atual dentro do R3:
 
@@ -35,24 +28,22 @@
 
 ## Descrição
 
-Aqui você pode detalhar melhor o que seu projeto faz, para quem ele é útil e quais problemas ele resolve. Seja claro e conciso, use uma linguagem fácil de entender e evite jargões técnicos desnecessários.
+Projeto Integrador do 2o Semestre, do curso de Tecnologia em Redes de Computadores, desenvolvido e entregue, sob a orientação da professora Karin Pfannemüller Gomes, instrutora da disciplina de Redação Técnica e o professor Maury Souza, responsável pela matéria de Programação para Rede e Banco de Dados.
+<p align="center">SENAC - TURMA 2024 - 2º SEMESTRE</p>
+<p align="center">ALUNOS:</p>
+<p align="center">Augusto Rubio da Câmara</p>
+<p align="center">Erik Freitas Silva</p>
+<p align="center">Hugo Santos de Lima</p>
+<p align="center">Paulo Sérgio Aparecido Monteiro Feliciano</p>
+<p align="center">Fabricio Lima</p>
 
 **Funcionalidades:**
 
-* Lista das principais funcionalidades do seu projeto.
-* Use marcadores para melhor organização.
-* Seja específico e destaque os pontos fortes.
+* Scanner de rede usando Nmap;
+* Funcionalidade de PING;
+* Controles de usuários no acesso às ferramenta de scanner de rede;
+* Personalização do programa via configuração.
 
 ## Instalação
 
-Instruções detalhadas de como instalar e configurar o projeto. Inclua pré-requisitos, dependências, comandos e exemplos.
-
-```bash
-# Clone o repositório
-git clone [URL inválido removido]
-
-# Acesse o diretório do projeto
-cd seu-repositorio
-
-# Instale as dependências
-npm install
+Instruções detalhadas de como instalar e configurar o projeto nesse pdf: https://drive.google.com/file/d/1h6KWI_1zYlbeoVaKnz6JgCHonTsosOz7/view?usp=sharing
